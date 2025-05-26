@@ -5,20 +5,48 @@
     <title>Estado cargadores Qwello</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding: 2em; background: #f0f0f0; }
-        h1 { font-size: 2em; }
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 2em;
+            background: #f0f0f0;
+        }
+
+        h1 {
+            font-size: 3em;
+            margin-bottom: 1.5em;
+        }
+
         .charger {
             margin: 1em auto;
-            padding: 1em;
-            width: 80%;
-            max-width: 400px;
-            border-radius: 10px;
+            padding: 2.5em 1em;
+            width: 95%;
+            max-width: 550px;
+            border-radius: 16px;
             color: white;
-            font-size: 1.2em;
+            font-size: 2em;
+            font-weight: bold;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+            transition: transform 0.2s ease;
         }
-        .available { background-color: #4CAF50; }
-        .unavailable { background-color: #f44336; }
-        footer { margin-top: 2em; font-size: 0.9em; color: #777; }
+
+        .charger:hover {
+            transform: scale(1.04);
+        }
+
+        .available {
+            background-color: #4CAF50;
+        }
+
+        .unavailable {
+            background-color: #f44336;
+        }
+
+        footer {
+            margin-top: 3em;
+            font-size: 1.1em;
+            color: #777;
+        }
     </style>
 </head>
 <body>
@@ -63,7 +91,7 @@
         }
 
         updateStatus();
-        setInterval(updateStatus, 5000); // actualiza cada minuto
+        setInterval(updateStatus, 5000);
     </script>
 </body>
 </html>
