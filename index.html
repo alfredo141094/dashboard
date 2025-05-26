@@ -40,12 +40,17 @@
             }
         };
 
+        async function fetchWithProxy(url) {
+            const proxyUrl = "https://api.allorigins.win/raw?url=" + encodeURIComponent(url);
+            const response = await fetch(proxyUrl);
+            return await response.json();
+        }
+
         async function updateStatus() {
             for (let id in endpoints) {
                 const div = document.getElementById(id);
                 try {
-                    const res = await fetch(endpoints[id].url);
-                    const data = await res.json();
+                    const data = await fetchWithProxy(endpoints[id].url);
                     const available = data.availableChargersCount > 0;
                     div.className = "charger " + (available ? "available" : "unavailable");
                     div.textContent = `${endpoints[id].name}: ${available ? "Disponible ✅" : "Ocupado ❌"}`;
