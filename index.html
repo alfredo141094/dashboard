@@ -24,7 +24,7 @@
             max-width: 550px;
             border-radius: 16px;
             color: white;
-            font-size: 2em;
+            font-size: 1.6em;
             font-weight: bold;
             box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
             transition: transform 0.2s ease;
@@ -68,20 +68,44 @@
             }
         };
 
+        // Almacena estado y hora de último cambio
+        const chargerStatus = {
+            "pueblo": { state: null, lastChange: null },
+            "bruselas": { state: null, lastChange: null }
+        };
+
         async function fetchWithProxy(url) {
             const proxyUrl = "https://api.allorigins.win/raw?url=" + encodeURIComponent(url);
             const response = await fetch(proxyUrl);
             return await response.json();
         }
 
+        function formatDuration(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins}m ${secs}s`;
+        }
+
         async function updateStatus() {
+            const now = Date.now();
             for (let id in endpoints) {
                 const div = document.getElementById(id);
                 try {
                     const data = await fetchWithProxy(endpoints[id].url);
-                    const available = data.availableChargersCount > 0;
-                    div.className = "charger " + (available ? "available" : "unavailable");
-                    div.textContent = `${endpoints[id].name}: ${available ? "Disponible ✅" : "Ocupado ❌"}`;
+                    const isAvailable = data.availableChargersCount > 0;
+                    const newState = isAvailable ? "available" : "unavailable";
+
+                    // Si cambia el estado, actualizamos hora
+                    if (chargerStatus[id].state !== newState) {
+                        chargerStatus[id].state = newState;
+                        chargerStatus[id].lastChange = now;
+                    }
+
+                    const secondsElapsed = Math.floor((now - chargerStatus[id].lastChange) / 1000);
+                    const timeInfo = formatDuration(secondsElapsed);
+
+                    div.className = `charger ${newState}`;
+                    div.textContent = `${endpoints[id].name}: ${isAvailable ? "Disponible ✅" : "Ocupado ❌"} · ${timeInfo}`;
                 } catch (err) {
                     div.className = "charger unavailable";
                     div.textContent = `${endpoints[id].name}: Error al cargar`;
@@ -90,8 +114,25 @@
             document.getElementById("timestamp").textContent = new Date().toLocaleTimeString();
         }
 
+        function refreshDurations() {
+            const now = Date.now();
+            for (let id in chargerStatus) {
+                const div = document.getElementById(id);
+                const state = chargerStatus[id].state;
+                const lastChange = chargerStatus[id].lastChange;
+
+                if (state && lastChange) {
+                    const secondsElapsed = Math.floor((now - lastChange) / 1000);
+                    const timeInfo = formatDuration(secondsElapsed);
+                    const name = endpoints[id].name;
+                    div.textContent = `${name}: ${state === "available" ? "Disponible ✅" : "Ocupado ❌"} · ${timeInfo}`;
+                }
+            }
+        }
+
         updateStatus();
-        setInterval(updateStatus, 5000);
+        setInterval(updateStatus, 5000);     // Refresca estado
+        setInterval(refreshDurations, 1000); // Actualiza tiempo transcurrido
     </script>
 </body>
 </html>
