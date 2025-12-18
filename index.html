@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <title>Dashboard Qwello Live</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   
@@ -63,9 +64,9 @@
     .available .status-badge { background: #e6fffa; color: #008767; }
     .unavailable .status-badge { background: #fff5f5; color: #a02020; }
 
-    .chart-container { height: 150px; margin-top: 1rem; }
+    .chart-container { height: 160px; margin-top: 1rem; }
 
-    footer { margin-top: 2rem; font-size: 0.8rem; opacity: 0.6; text-align: center; }
+    footer { margin-top: 2rem; font-size: 0.8rem; opacity: 0.6; text-align: center; line-height: 1.5; }
     
     .live-indicator {
       display: inline-block; width: 8px; height: 8px;
@@ -82,37 +83,31 @@
   <h1>🔌 Monitor Qwello Real-Time</h1>
 
   <div id="chargers-container">
-    <p style="text-align: center;">Conectando con Supabase...</p>
+    <p style="text-align: center;">Conectando con la base de datos...</p>
   </div>
 
   <footer>
     <span class="live-indicator"></span>
-    Sincronizado con GitHub Actions cada 15 min<br>
-    Última actualización: <span id="timestamp">-</span>
+    Monitorización automática activa (GitHub Actions)<br>
+    Última sincronización: <span id="timestamp">-</span>
   </footer>
 
   <script>
-    // 1. CONFIGURACIÓN SUPABASE (RELLENA ESTO)
-    const SB_URL = "TU_URL_DE_SUPABASE";
-    const SB_KEY = "TU_ANON_KEY_DE_SUPABASE";
-    const supabase = AbrirSupabase();
-
-    function AbrirSupabase() {
-        if (SB_URL.includes("TU_URL")) return null;
-        return exports.supabase.createClient(SB_URL, SB_KEY);
-    }
+    // Configuración de Supabase con tus credenciales
+    const SB_URL = "https://mmxqckekhfaqrqgcabvh.supabase.co";
+    const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1teHFja2VraGZhcXJxZ2NhYnZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwMjczNzEsImV4cCI6MjA4MTYwMzM3MX0.gl7HYm_o-XC7yKqguusx1lM6ULZ_htuuvrKyvoBLQXU";
+    
+    const supabase = typeof supabase !== 'undefined' ? supabase : window.supabase.createClient(SB_URL, SB_KEY);
 
     const CONFIG = {
-      pueblo: { name: "Plaza del Pueblo 1", color: "#00b894" },
-      bruselas: { name: "Av. de Bruselas 19", color: "#0984e3" }
+      pueblo: { name: "Plaza del Pueblo 1" },
+      bruselas: { name: "Av. de Bruselas 19" }
     };
 
     const charts = {};
 
-    async function fetchData() {
-      if (!supabase) return;
-
-      // Obtener datos de las últimas 24 horas
+    async function loadData() {
+      // Pedimos los datos de las últimas 24 horas
       const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       
       const { data, error } = await supabase
@@ -122,31 +117,24 @@
         .order('creado_at', { ascending: true });
 
       if (error) {
-        console.error("Error cargando Supabase:", error);
+        console.error("Error al leer Supabase:", error);
         return;
       }
 
-      processAndRender(data);
-      document.getElementById("timestamp").textContent = new Date().toLocaleTimeString();
-    }
-
-    function processAndRender(logs) {
       const container = document.getElementById('chargers-container');
-      
-      // Si es la primera carga, limpiar el "Cargando..."
       if (Object.keys(charts).length === 0) container.innerHTML = '';
 
       for (const id in CONFIG) {
-        // Filtrar logs por cargador
-        const chargerLogs = logs.filter(l => l.cargador_id === id);
-        const lastEntry = chargerLogs[chargerLogs.length - 1] || { estado: 'unavailable' };
+        const logs = data.filter(l => l.cargador_id === id);
+        const lastStatus = logs.length > 0 ? logs[logs.length - 1].estado : 'unavailable';
         
-        renderCard(id, lastEntry.estado);
-        renderChart(id, chargerLogs);
+        updateUI(id, lastStatus, logs);
       }
+      
+      document.getElementById("timestamp").textContent = new Date().toLocaleTimeString();
     }
 
-    function renderCard(id, state) {
+    function updateUI(id, state, logs) {
       let card = document.getElementById(`card-${id}`);
       if (!card) {
         card = document.createElement('div');
@@ -158,31 +146,32 @@
       card.innerHTML = `
         <div class="header">
           <div class="location-name">${CONFIG[id].name}</div>
-          <div class="status-badge">${state === 'available' ? 'Disponible' : 'Ocupado'}</div>
+          <div class="status-badge">${state === 'available' ? 'Disponible ✅' : 'Ocupado ❌'}</div>
         </div>
         <div class="chart-container">
           <canvas id="chart-${id}"></canvas>
         </div>
       `;
+
+      renderChart(id, logs);
     }
 
-    function renderChart(id, chargerLogs) {
+    function renderChart(id, logs) {
       const ctx = document.getElementById(`chart-${id}`).getContext('2d');
       
-      // Preparar datos para las 24 horas (0 = libre, 1 = ocupado)
-      // Agrupamos por la hora del log
+      // Mapeamos las 24 horas del día
       const hourlyData = Array(24).fill(null);
-      chargerLogs.forEach(log => {
+      logs.forEach(log => {
         const hour = new Date(log.creado_at).getHours();
         hourlyData[hour] = log.estado === 'available' ? 0 : 1;
       });
 
-      const backgroundColors = hourlyData.map(v => 
-        v === 0 ? '#2ecc71' : (v === 1 ? '#e74c3c' : '#eeeeee')
+      const bgColors = hourlyData.map(v => 
+        v === 0 ? '#2ecc71' : (v === 1 ? '#e74c3c' : '#e0e0e0')
       );
 
       if (charts[id]) {
-        charts[id].data.datasets[0].backgroundColor = backgroundColors;
+        charts[id].data.datasets[0].backgroundColor = bgColors;
         charts[id].update();
       } else {
         charts[id] = new Chart(ctx, {
@@ -191,23 +180,23 @@
             labels: Array.from({length: 24}, (_, i) => `${i}h`),
             datasets: [{
               data: Array(24).fill(1),
-              backgroundColor: backgroundColors,
-              borderRadius: 4
+              backgroundColor: bgColors,
+              borderRadius: 5
             }]
           },
           options: {
             responsive: true,
             maintainAspectRatio: false,
             scales: { y: { display: false }, x: { grid: { display: false } } },
-            plugins: { legend: { display: false }, tooltip: { enabled: false } }
+            plugins: { legend: { display: false } }
           }
         });
       }
     }
 
-    // Actualizar cada 30 segundos
-    fetchData();
-    setInterval(fetchData, 30000);
+    // Actualizar cada 60 segundos
+    loadData();
+    setInterval(loadData, 60000);
   </script>
 </body>
 </html>
