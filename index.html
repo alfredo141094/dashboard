@@ -2,158 +2,210 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Estado cargadores Qwello</title>
+  <title>Estado Cargadores Qwello</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
+    :root {
+      --bg-color: #f8f9fa;
+      --card-bg: #ffffff;
+      --text-main: #333;
+      --success: #2ecc71;
+      --danger: #e74c3c;
+      --shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-color: #1a1a1a;
+        --card-bg: #2d2d2d;
+        --text-main: #eee;
+      }
+    }
+
     body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      padding: 2em;
-      background: #f0f0f0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1rem;
     }
-    h1 {
-      font-size: 3em;
-      margin-bottom: 1.5em;
+
+    h1 { margin: 2rem 0; font-size: 2rem; }
+
+    #chargers-container {
+      width: 100%;
+      max-width: 600px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
     }
-    .charger {
-      margin: 1em auto;
-      padding: 2.5em 1em;
-      width: 95%;
-      max-width: 590px;
-      border-radius: 16px;
-      color: white;
-      font-size: 1.6em;
-      font-weight: bold;
-      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+
+    .charger-card {
+      background: var(--card-bg);
+      padding: 1.5rem;
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
       transition: transform 0.2s ease;
+      border-left: 8px solid #ccc;
     }
-    .charger:hover {
-      transform: scale(1.04);
+
+    .charger-card:hover { transform: translateY(-3px); }
+
+    .charger-card.available { border-left-color: var(--success); }
+    .charger-card.unavailable { border-left-color: var(--danger); }
+
+    .status-badge {
+      padding: 0.5rem 1rem;
+      border-radius: 50px;
+      font-weight: bold;
+      margin-top: 1rem;
+      text-transform: uppercase;
+      font-size: 0.9rem;
     }
-    .available {
-      background-color: #4CAF50;
+
+    .available .status-badge { background: #d4edda; color: #155724; }
+    .unavailable .status-badge { background: #f8d7da; color: #721c24; }
+
+    .location-name { font-size: 1.2rem; font-weight: 600; }
+    .timer { font-family: monospace; font-size: 1.1rem; margin-top: 0.5rem; opacity: 0.8; }
+
+    .live-indicator {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      background: var(--success);
+      border-radius: 50%;
+      margin-right: 8px;
+      animation: pulse 2s infinite;
     }
-    .unavailable {
-      background-color: #f44336;
+
+    @keyframes pulse {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); }
+      70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(46, 204, 113, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
     }
-    footer {
-      margin-top: 3em;
-      font-size: 1.1em;
-      color: #777;
-    }
+
+    footer { margin-top: 3rem; font-size: 0.9rem; opacity: 0.6; }
   </style>
 </head>
 <body>
-  <h1>🔌 Estado Cargadores Qwello</h1>
-  <div id="pueblo" class="charger">Cargando estado...</div>
-  <div id="bruselas" class="charger">Cargando estado...</div>
 
-  <footer>Actualizado <span id="timestamp"></span></footer>
+  <h1>🔌 Cargadores Qwello</h1>
+
+  <div id="chargers-container">
+    <div class="charger-card">Cargando datos maestros...</div>
+  </div>
+
+  <footer>
+    <span class="live-indicator"></span>
+    Última actualización: <span id="timestamp">-</span>
+  </footer>
 
   <script>
-    const API_BASE = "https://68357c9ecd78db2058c1ca76.mockapi.io";
-    const RESOURCE = "chargers";
-
-    const endpoints = {
-      pueblo: {
-        url: "https://back.clientesrecarga-acciona.com/api/v3/ubicaciones/648077a99a6d9e443643780d",
-        name: "📍 Plaza del Pueblo 1"
-      },
-      bruselas: {
-        url: "https://back.clientesrecarga-acciona.com/api/v3/ubicaciones/648077a99a6d9e44364377cd",
-        name: "📍 Av. de Bruselas 19"
+    const CONFIG = {
+      API_BASE: "https://68357c9ecd78db2058c1ca76.mockapi.io/chargers",
+      ENDPOINTS: {
+        pueblo: {
+          url: "https://back.clientesrecarga-acciona.com/api/v3/ubicaciones/648077a99a6d9e443643780d",
+          name: "Plaza del Pueblo 1"
+        },
+        bruselas: {
+          url: "https://back.clientesrecarga-acciona.com/api/v3/ubicaciones/648077a99a6d9e44364377cd",
+          name: "Av. de Bruselas 19"
+        }
       }
     };
 
-    const chargerStatus = {};
+    let localState = {};
 
-    async function fetchWithProxy(url) {
-      const proxyUrl = "https://api.allorigins.win/raw?url=" + encodeURIComponent(url);
-      const response = await fetch(proxyUrl);
-      return await response.json();
+    function formatDuration(ms) {
+      const seconds = Math.floor(ms / 1000);
+      const h = Math.floor(seconds / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      const s = seconds % 60;
+      return `${h}h ${m}m ${s}s`;
     }
 
-    function formatDuration(totalSeconds) {
-      const days = Math.floor(totalSeconds / (3600 * 24));
-      const hours = Math.floor((totalSeconds % (3600 * 24)) / 3600);
-      const minutes = Math.floor((totalSeconds % 3600) / 60);
-      const seconds = totalSeconds % 60;
-
-      const parts = [];
-      if (days > 0) parts.push(`${days}d`);
-      if (hours > 0 || days > 0) parts.push(`${hours}h`);
-      if (minutes > 0 || hours > 0 || days > 0) parts.push(`${minutes}m`);
-      parts.push(`${seconds}s`);
-
-      return parts.join(' ');
+    async function fetchLiveStatus(url) {
+      const proxy = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+      const res = await fetch(proxy);
+      const data = await res.json();
+      return data.availableChargersCount > 0 ? "available" : "unavailable";
     }
 
-    async function getCharger(id) {
-      const res = await fetch(`${API_BASE}/${RESOURCE}/${id}`);
-      return await res.json();
-    }
+    async function processCharger(id) {
+      try {
+        const [newState, remote] = await Promise.all([
+          fetchLiveStatus(CONFIG.ENDPOINTS[id].url),
+          fetch(`${CONFIG.API_BASE}/${id}`).then(r => r.json())
+        ]);
 
-    async function updateCharger(id, data) {
-      await fetch(`${API_BASE}/${RESOURCE}/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-      });
-    }
+        const now = Date.now();
+        let finalChangeTime = remote.lastChange;
 
-    async function updateStatus() {
-      const now = Date.now();
-
-      for (let id in endpoints) {
-        const div = document.getElementById(id);
-        try {
-          const liveData = await fetchWithProxy(endpoints[id].url);
-          const isAvailable = liveData.availableChargersCount > 0;
-          const newState = isAvailable ? "available" : "unavailable";
-
-          const remote = await getCharger(id);
-          if (!remote.lastChange || remote.state !== newState) {
-            await updateCharger(id, {
-              ...remote,
-              state: newState,
-              lastChange: now
-            });
-            chargerStatus[id] = { state: newState, lastChange: now };
-          } else {
-            chargerStatus[id] = {
-              state: remote.state,
-              lastChange: remote.lastChange
-            };
-          }
-
-          const seconds = Math.floor((now - chargerStatus[id].lastChange) / 1000);
-          div.className = `charger ${chargerStatus[id].state}`;
-          div.textContent = `${endpoints[id].name}: ${chargerStatus[id].state === "available" ? "Disponible ✅" : "Ocupado ❌"} · ${formatDuration(seconds)}`;
-
-        } catch (err) {
-          div.className = "charger unavailable";
-          div.textContent = `${endpoints[id].name}: Error al cargar`;
+        // Solo actualizamos MockAPI si el estado cambió
+        if (remote.state !== newState) {
+          finalChangeTime = now;
+          await fetch(`${CONFIG.API_BASE}/${id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ state: newState, lastChange: now })
+          });
         }
+
+        localState[id] = { state: newState, lastChange: finalChangeTime };
+        renderCharger(id);
+      } catch (err) {
+        console.error(`Error en ${id}:`, err);
+        document.getElementById(id).innerHTML = `⚠️ Error de conexión en ${CONFIG.ENDPOINTS[id].name}`;
+      }
+    }
+
+    function renderCharger(id) {
+      const container = document.getElementById('chargers-container');
+      let card = document.getElementById(id);
+      
+      if (!card) {
+        card = document.createElement('div');
+        card.id = id;
+        container.appendChild(card);
       }
 
+      const info = localState[id];
+      const duration = Date.now() - info.lastChange;
+
+      card.className = `charger-card ${info.state}`;
+      card.innerHTML = `
+        <div class="location-name">${CONFIG.ENDPOINTS[id].name}</div>
+        <div class="status-badge">${info.state === 'available' ? 'Disponible ✅' : 'Ocupado ❌'}</div>
+        <div class="timer">Hace: ${formatDuration(duration)}</div>
+      `;
+    }
+
+    async function updateAll() {
+      // Limpiar el contenedor en la primera carga si es necesario
+      if(Object.keys(localState).length === 0) document.getElementById('chargers-container').innerHTML = '';
+      
+      await Promise.all(Object.keys(CONFIG.ENDPOINTS).map(id => processCharger(id)));
       document.getElementById("timestamp").textContent = new Date().toLocaleTimeString();
     }
 
-    function refreshDurations() {
-      const now = Date.now();
-      for (let id in chargerStatus) {
-        const div = document.getElementById(id);
-        const info = chargerStatus[id];
-        if (info && info.lastChange) {
-          const seconds = Math.floor((now - info.lastChange) / 1000);
-          div.textContent = `${endpoints[id].name}: ${info.state === "available" ? "Disponible ✅" : "Ocupado ❌"} · ${formatDuration(seconds)}`;
-        }
+    // Actualización de los relojes (cada segundo)
+    setInterval(() => {
+      for (let id in localState) {
+        renderCharger(id);
       }
-    }
+    }, 1000);
 
-    updateStatus();
-    setInterval(updateStatus, 5000);
-    setInterval(refreshDurations, 1000);
+    // Actualización de APIs (cada 10 segundos para no saturar)
+    updateAll();
+    setInterval(updateAll, 10000);
   </script>
 </body>
 </html>
