@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Dashboard Qwello Live</title>
+  <title>Dashboard Qwello Real-Time</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -33,7 +33,7 @@
       display: flex; flex-direction: column; align-items: center;
     }
 
-    h1 { margin: 1.5rem 0; font-size: 1.8rem; text-align: center; }
+    h1 { margin: 1.5rem 0; font-size: 1.8rem; }
 
     #chargers-container {
       width: 100%; max-width: 650px;
@@ -43,9 +43,10 @@
     .charger-card {
       background: var(--card-bg);
       padding: 1.5rem;
-      border-radius: 16px;
+      border-radius: 20px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      border-top: 6px solid #ccc;
+      border-top: 8px solid #ccc;
+      transition: transform 0.2s;
     }
 
     .charger-card.available { border-top-color: var(--success); }
@@ -57,7 +58,7 @@
     .status-badge {
       padding: 0.4rem 0.8rem;
       border-radius: 50px;
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       font-weight: bold;
       text-transform: uppercase;
     }
@@ -66,7 +67,7 @@
 
     .chart-container { height: 160px; margin-top: 1rem; }
 
-    footer { margin-top: 2rem; font-size: 0.8rem; opacity: 0.6; text-align: center; line-height: 1.5; }
+    footer { margin-top: 3rem; font-size: 0.8rem; opacity: 0.6; text-align: center; }
     
     .live-indicator {
       display: inline-block; width: 8px; height: 8px;
@@ -83,21 +84,21 @@
   <h1>🔌 Monitor Qwello Real-Time</h1>
 
   <div id="chargers-container">
-    <p style="text-align: center;">Conectando con la base de datos...</p>
+    <div style="text-align: center; padding: 2rem;">Conectando con Supabase...</div>
   </div>
 
   <footer>
     <span class="live-indicator"></span>
-    Monitorización automática activa (GitHub Actions)<br>
-    Última sincronización: <span id="timestamp">-</span>
+    Sincronizado con GitHub cada 15 min<br>
+    Última actualización: <span id="timestamp">-</span>
   </footer>
 
   <script>
-    // Configuración de Supabase con tus credenciales
+    // Configuración de tu Supabase
     const SB_URL = "https://mmxqckekhfaqrqgcabvh.supabase.co";
     const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1teHFja2VraGZhcXJxZ2NhYnZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwMjczNzEsImV4cCI6MjA4MTYwMzM3MX0.gl7HYm_o-XC7yKqguusx1lM6ULZ_htuuvrKyvoBLQXU";
     
-    const supabase = typeof supabase !== 'undefined' ? supabase : window.supabase.createClient(SB_URL, SB_KEY);
+    const supabase = window.supabase.createClient(SB_URL, SB_KEY);
 
     const CONFIG = {
       pueblo: { name: "Plaza del Pueblo 1" },
@@ -106,8 +107,8 @@
 
     const charts = {};
 
-    async function loadData() {
-      // Pedimos los datos de las últimas 24 horas
+    async function updateDashboard() {
+      // Obtenemos datos de las últimas 24 horas
       const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       
       const { data, error } = await supabase
@@ -116,25 +117,22 @@
         .gte('creado_at', oneDayAgo)
         .order('creado_at', { ascending: true });
 
-      if (error) {
-        console.error("Error al leer Supabase:", error);
-        return;
-      }
+      if (error) return console.error("Error Supabase:", error);
 
       const container = document.getElementById('chargers-container');
       if (Object.keys(charts).length === 0) container.innerHTML = '';
 
       for (const id in CONFIG) {
         const logs = data.filter(l => l.cargador_id === id);
-        const lastStatus = logs.length > 0 ? logs[logs.length - 1].estado : 'unavailable';
+        const lastEntry = logs[logs.length - 1] || { estado: 'unavailable' };
         
-        updateUI(id, lastStatus, logs);
+        renderCard(id, lastEntry.estado, logs);
       }
       
       document.getElementById("timestamp").textContent = new Date().toLocaleTimeString();
     }
 
-    function updateUI(id, state, logs) {
+    function renderCard(id, state, logs) {
       let card = document.getElementById(`card-${id}`);
       if (!card) {
         card = document.createElement('div');
@@ -153,25 +151,25 @@
         </div>
       `;
 
-      renderChart(id, logs);
+      updateChart(id, logs);
     }
 
-    function renderChart(id, logs) {
+    function updateChart(id, logs) {
       const ctx = document.getElementById(`chart-${id}`).getContext('2d');
       
-      // Mapeamos las 24 horas del día
+      // Mapeamos las 24 horas del día (0-23)
       const hourlyData = Array(24).fill(null);
       logs.forEach(log => {
         const hour = new Date(log.creado_at).getHours();
         hourlyData[hour] = log.estado === 'available' ? 0 : 1;
       });
 
-      const bgColors = hourlyData.map(v => 
+      const backgroundColors = hourlyData.map(v => 
         v === 0 ? '#2ecc71' : (v === 1 ? '#e74c3c' : '#e0e0e0')
       );
 
       if (charts[id]) {
-        charts[id].data.datasets[0].backgroundColor = bgColors;
+        charts[id].data.datasets[0].backgroundColor = backgroundColors;
         charts[id].update();
       } else {
         charts[id] = new Chart(ctx, {
@@ -180,8 +178,8 @@
             labels: Array.from({length: 24}, (_, i) => `${i}h`),
             datasets: [{
               data: Array(24).fill(1),
-              backgroundColor: bgColors,
-              borderRadius: 5
+              backgroundColor: backgroundColors,
+              borderRadius: 4
             }]
           },
           options: {
@@ -194,9 +192,9 @@
       }
     }
 
-    // Actualizar cada 60 segundos
-    loadData();
-    setInterval(loadData, 60000);
+    // Actualizar cada minuto para ver cambios recientes
+    updateDashboard();
+    setInterval(updateDashboard, 60000);
   </script>
 </body>
 </html>
