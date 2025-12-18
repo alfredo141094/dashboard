@@ -2,23 +2,25 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Estado Cargadores Qwello</title>
+  <title>Dashboard Qwello Live</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
   <style>
     :root {
-      --bg-color: #f8f9fa;
+      --bg-color: #f0f2f5;
       --card-bg: #ffffff;
-      --text-main: #333;
-      --success: #2ecc71;
-      --danger: #e74c3c;
-      --shadow: 0 4px 6px rgba(0,0,0,0.1);
+      --text-main: #1c1e21;
+      --success: #00b894;
+      --danger: #d63031;
     }
 
     @media (prefers-color-scheme: dark) {
       :root {
-        --bg-color: #1a1a1a;
-        --card-bg: #2d2d2d;
-        --text-main: #eee;
+        --bg-color: #121212;
+        --card-bg: #1e1e1e;
+        --text-main: #e4e6eb;
       }
     }
 
@@ -26,186 +28,186 @@
       font-family: 'Segoe UI', system-ui, sans-serif;
       background-color: var(--bg-color);
       color: var(--text-main);
-      margin: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 1rem;
+      margin: 0; padding: 1rem;
+      display: flex; flex-direction: column; align-items: center;
     }
 
-    h1 { margin: 2rem 0; font-size: 2rem; }
+    h1 { margin: 1.5rem 0; font-size: 1.8rem; text-align: center; }
 
     #chargers-container {
-      width: 100%;
-      max-width: 600px;
-      display: flex;
-      flex-direction: column;
-      gap: 1.5rem;
+      width: 100%; max-width: 650px;
+      display: flex; flex-direction: column; gap: 1.5rem;
     }
 
     .charger-card {
       background: var(--card-bg);
       padding: 1.5rem;
-      border-radius: 20px;
-      box-shadow: var(--shadow);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      transition: transform 0.2s ease;
-      border-left: 8px solid #ccc;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      border-top: 6px solid #ccc;
     }
 
-    .charger-card:hover { transform: translateY(-3px); }
+    .charger-card.available { border-top-color: var(--success); }
+    .charger-card.unavailable { border-top-color: var(--danger); }
 
-    .charger-card.available { border-left-color: var(--success); }
-    .charger-card.unavailable { border-left-color: var(--danger); }
-
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .location-name { font-size: 1.1rem; font-weight: bold; }
+    
     .status-badge {
-      padding: 0.5rem 1rem;
+      padding: 0.4rem 0.8rem;
       border-radius: 50px;
+      font-size: 0.8rem;
       font-weight: bold;
-      margin-top: 1rem;
       text-transform: uppercase;
-      font-size: 0.9rem;
     }
+    .available .status-badge { background: #e6fffa; color: #008767; }
+    .unavailable .status-badge { background: #fff5f5; color: #a02020; }
 
-    .available .status-badge { background: #d4edda; color: #155724; }
-    .unavailable .status-badge { background: #f8d7da; color: #721c24; }
+    .chart-container { height: 150px; margin-top: 1rem; }
 
-    .location-name { font-size: 1.2rem; font-weight: 600; }
-    .timer { font-family: monospace; font-size: 1.1rem; margin-top: 0.5rem; opacity: 0.8; }
-
+    footer { margin-top: 2rem; font-size: 0.8rem; opacity: 0.6; text-align: center; }
+    
     .live-indicator {
-      display: inline-block;
-      width: 10px;
-      height: 10px;
-      background: var(--success);
-      border-radius: 50%;
-      margin-right: 8px;
-      animation: pulse 2s infinite;
+      display: inline-block; width: 8px; height: 8px;
+      background: var(--success); border-radius: 50%;
+      margin-right: 5px; animation: pulse 2s infinite;
     }
-
     @keyframes pulse {
-      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); }
-      70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(46, 204, 113, 0); }
-      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
+      0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; }
     }
-
-    footer { margin-top: 3rem; font-size: 0.9rem; opacity: 0.6; }
   </style>
 </head>
 <body>
 
-  <h1>🔌 Cargadores Qwello</h1>
+  <h1>🔌 Monitor Qwello Real-Time</h1>
 
   <div id="chargers-container">
-    <div class="charger-card">Cargando datos maestros...</div>
+    <p style="text-align: center;">Conectando con Supabase...</p>
   </div>
 
   <footer>
     <span class="live-indicator"></span>
+    Sincronizado con GitHub Actions cada 15 min<br>
     Última actualización: <span id="timestamp">-</span>
   </footer>
 
   <script>
+    // 1. CONFIGURACIÓN SUPABASE (RELLENA ESTO)
+    const SB_URL = "TU_URL_DE_SUPABASE";
+    const SB_KEY = "TU_ANON_KEY_DE_SUPABASE";
+    const supabase = AbrirSupabase();
+
+    function AbrirSupabase() {
+        if (SB_URL.includes("TU_URL")) return null;
+        return exports.supabase.createClient(SB_URL, SB_KEY);
+    }
+
     const CONFIG = {
-      API_BASE: "https://68357c9ecd78db2058c1ca76.mockapi.io/chargers",
-      ENDPOINTS: {
-        pueblo: {
-          url: "https://back.clientesrecarga-acciona.com/api/v3/ubicaciones/648077a99a6d9e443643780d",
-          name: "Plaza del Pueblo 1"
-        },
-        bruselas: {
-          url: "https://back.clientesrecarga-acciona.com/api/v3/ubicaciones/648077a99a6d9e44364377cd",
-          name: "Av. de Bruselas 19"
-        }
-      }
+      pueblo: { name: "Plaza del Pueblo 1", color: "#00b894" },
+      bruselas: { name: "Av. de Bruselas 19", color: "#0984e3" }
     };
 
-    let localState = {};
+    const charts = {};
 
-    function formatDuration(ms) {
-      const seconds = Math.floor(ms / 1000);
-      const h = Math.floor(seconds / 3600);
-      const m = Math.floor((seconds % 3600) / 60);
-      const s = seconds % 60;
-      return `${h}h ${m}m ${s}s`;
-    }
+    async function fetchData() {
+      if (!supabase) return;
 
-    async function fetchLiveStatus(url) {
-      const proxy = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-      const res = await fetch(proxy);
-      const data = await res.json();
-      return data.availableChargersCount > 0 ? "available" : "unavailable";
-    }
-
-    async function processCharger(id) {
-      try {
-        const [newState, remote] = await Promise.all([
-          fetchLiveStatus(CONFIG.ENDPOINTS[id].url),
-          fetch(`${CONFIG.API_BASE}/${id}`).then(r => r.json())
-        ]);
-
-        const now = Date.now();
-        let finalChangeTime = remote.lastChange;
-
-        // Solo actualizamos MockAPI si el estado cambió
-        if (remote.state !== newState) {
-          finalChangeTime = now;
-          await fetch(`${CONFIG.API_BASE}/${id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ state: newState, lastChange: now })
-          });
-        }
-
-        localState[id] = { state: newState, lastChange: finalChangeTime };
-        renderCharger(id);
-      } catch (err) {
-        console.error(`Error en ${id}:`, err);
-        document.getElementById(id).innerHTML = `⚠️ Error de conexión en ${CONFIG.ENDPOINTS[id].name}`;
-      }
-    }
-
-    function renderCharger(id) {
-      const container = document.getElementById('chargers-container');
-      let card = document.getElementById(id);
+      // Obtener datos de las últimas 24 horas
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       
-      if (!card) {
-        card = document.createElement('div');
-        card.id = id;
-        container.appendChild(card);
+      const { data, error } = await supabase
+        .from('chargers_log')
+        .select('*')
+        .gte('creado_at', oneDayAgo)
+        .order('creado_at', { ascending: true });
+
+      if (error) {
+        console.error("Error cargando Supabase:", error);
+        return;
       }
 
-      const info = localState[id];
-      const duration = Date.now() - info.lastChange;
-
-      card.className = `charger-card ${info.state}`;
-      card.innerHTML = `
-        <div class="location-name">${CONFIG.ENDPOINTS[id].name}</div>
-        <div class="status-badge">${info.state === 'available' ? 'Disponible ✅' : 'Ocupado ❌'}</div>
-        <div class="timer">Hace: ${formatDuration(duration)}</div>
-      `;
-    }
-
-    async function updateAll() {
-      // Limpiar el contenedor en la primera carga si es necesario
-      if(Object.keys(localState).length === 0) document.getElementById('chargers-container').innerHTML = '';
-      
-      await Promise.all(Object.keys(CONFIG.ENDPOINTS).map(id => processCharger(id)));
+      processAndRender(data);
       document.getElementById("timestamp").textContent = new Date().toLocaleTimeString();
     }
 
-    // Actualización de los relojes (cada segundo)
-    setInterval(() => {
-      for (let id in localState) {
-        renderCharger(id);
-      }
-    }, 1000);
+    function processAndRender(logs) {
+      const container = document.getElementById('chargers-container');
+      
+      // Si es la primera carga, limpiar el "Cargando..."
+      if (Object.keys(charts).length === 0) container.innerHTML = '';
 
-    // Actualización de APIs (cada 10 segundos para no saturar)
-    updateAll();
-    setInterval(updateAll, 10000);
+      for (const id in CONFIG) {
+        // Filtrar logs por cargador
+        const chargerLogs = logs.filter(l => l.cargador_id === id);
+        const lastEntry = chargerLogs[chargerLogs.length - 1] || { estado: 'unavailable' };
+        
+        renderCard(id, lastEntry.estado);
+        renderChart(id, chargerLogs);
+      }
+    }
+
+    function renderCard(id, state) {
+      let card = document.getElementById(`card-${id}`);
+      if (!card) {
+        card = document.createElement('div');
+        card.id = `card-${id}`;
+        document.getElementById('chargers-container').appendChild(card);
+      }
+
+      card.className = `charger-card ${state}`;
+      card.innerHTML = `
+        <div class="header">
+          <div class="location-name">${CONFIG[id].name}</div>
+          <div class="status-badge">${state === 'available' ? 'Disponible' : 'Ocupado'}</div>
+        </div>
+        <div class="chart-container">
+          <canvas id="chart-${id}"></canvas>
+        </div>
+      `;
+    }
+
+    function renderChart(id, chargerLogs) {
+      const ctx = document.getElementById(`chart-${id}`).getContext('2d');
+      
+      // Preparar datos para las 24 horas (0 = libre, 1 = ocupado)
+      // Agrupamos por la hora del log
+      const hourlyData = Array(24).fill(null);
+      chargerLogs.forEach(log => {
+        const hour = new Date(log.creado_at).getHours();
+        hourlyData[hour] = log.estado === 'available' ? 0 : 1;
+      });
+
+      const backgroundColors = hourlyData.map(v => 
+        v === 0 ? '#2ecc71' : (v === 1 ? '#e74c3c' : '#eeeeee')
+      );
+
+      if (charts[id]) {
+        charts[id].data.datasets[0].backgroundColor = backgroundColors;
+        charts[id].update();
+      } else {
+        charts[id] = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: Array.from({length: 24}, (_, i) => `${i}h`),
+            datasets: [{
+              data: Array(24).fill(1),
+              backgroundColor: backgroundColors,
+              borderRadius: 4
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { y: { display: false }, x: { grid: { display: false } } },
+            plugins: { legend: { display: false }, tooltip: { enabled: false } }
+          }
+        });
+      }
+    }
+
+    // Actualizar cada 30 segundos
+    fetchData();
+    setInterval(fetchData, 30000);
   </script>
 </body>
 </html>
