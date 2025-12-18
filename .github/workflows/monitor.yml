@@ -1,0 +1,29 @@
+name: Qwello Auto Monitor
+
+on:
+  schedule:
+    # Se ejecuta cada 15 minutos automáticamente
+    - cron: '*/15 * * * *'
+  # Permite ejecutarlo a mano desde la pestaña Actions
+  workflow_dispatch:
+
+jobs:
+  check-status:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instalar dependencias
+        run: npm install
+
+      - name: Ejecutar monitor
+        run: node cron.js
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
