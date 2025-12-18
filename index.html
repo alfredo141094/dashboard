@@ -2,33 +2,43 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Qwello Precision Dashboard</title>
+  <title>Monitor Qwello Pro - Precisión</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    :root { --bg: #f0f2f5; --card: #ffffff; --text: #1c1e21; --success: #00b894; --danger: #d63031; --gray: #e0e0e0; }
-    @media (prefers-color-scheme: dark) { :root { --bg: #121212; --card: #1e1e1e; --text: #e4e6eb; --gray: #333; } }
+    :root { 
+      --bg: #f0f2f5; --card: #ffffff; --text: #1c1e21; 
+      --success: #00b894; --danger: #d63031; --gray: #e0e0e0; 
+    }
+    @media (prefers-color-scheme: dark) { 
+      :root { --bg: #121212; --card: #1e1e1e; --text: #e4e6eb; --gray: #333; } 
+    }
     body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 1rem; display: flex; flex-direction: column; align-items: center; }
+    h1 { margin: 1.5rem 0; font-size: 1.8rem; text-align: center; }
     #chargers-container { width: 100%; max-width: 650px; display: flex; flex-direction: column; gap: 1.5rem; }
     .charger-card { background: var(--card); padding: 1.5rem; border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-top: 8px solid #ccc; }
     .charger-card.available { border-top-color: var(--success); }
     .charger-card.unavailable { border-top-color: var(--danger); }
-    .header { display: flex; justify-content: space-between; align-items: flex-start; }
-    .location-info { display: flex; flex-direction: column; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; }
     .location-name { font-size: 1.1rem; font-weight: bold; }
+    .status-timer { font-size: 0.85rem; opacity: 0.7; margin-top: 2px; }
+    .stats-badge { font-size: 0.75rem; font-weight: bold; padding: 4px 10px; border-radius: 8px; background: rgba(0,0,0,0.05); margin-top: 8px; display: inline-block; }
     .status-badge-main { padding: 0.4rem 0.8rem; border-radius: 50px; font-size: 0.75rem; font-weight: bold; }
     .available .status-badge-main { background: #e6fffa; color: #008767; }
     .unavailable .status-badge-main { background: #fff5f5; color: #a02020; }
     .chart-box { height: 140px; margin-top: 1rem; }
+    .history-list { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(0,0,0,0.1); font-size: 0.8rem; }
+    .history-item { display: flex; justify-content: space-between; margin-bottom: 4px; opacity: 0.8; }
+    .history-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
     footer { margin-top: 3rem; font-size: 0.8rem; opacity: 0.6; text-align: center; }
   </style>
 </head>
 <body>
 
-  <h1>🔌 Qwello Precision Monitor</h1>
+  <h1>🔌 Monitor Qwello Pro</h1>
   <div id="chargers-container">
-    <p id="msg" style="text-align: center; padding: 2rem;">Calculando proporciones exactas...</p>
+    <p id="msg" style="text-align: center; padding: 2rem;">Sincronizando datos...</p>
   </div>
 
   <script>
@@ -37,16 +47,22 @@
     const sbClient = window.supabase.createClient(SB_URL, SB_KEY);
     const charts = {};
 
+    // Mapeo de nombres corregido
+    const CHARGER_NAMES = {
+      pueblo: "Plaza del Pueblo, 1",
+      bruselas: "Avenida de Bruselas, 19"
+    };
+
     async function loadData() {
-      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const { data, error } = await sbClient
         .from('lecturas') 
         .select('*')
-        .gte('creado_at', oneDayAgo.toISOString())
+        .gte('creado_at', oneDayAgo)
         .order('creado_at', { ascending: true });
 
       if (error) return console.error(error);
-      if (data) {
+      if (data && data.length > 0) {
         document.getElementById('msg').style.display = 'none';
         renderDashboard(data);
       }
@@ -60,22 +76,17 @@
         const start = new Date(logs[i].creado_at);
         const end = new Date(logs[i+1].creado_at);
         const state = logs[i].estado;
-        
         let cursor = new Date(start);
 
         while (cursor < end) {
           const currentHour = cursor.getHours();
-          const nextHour = new Date(cursor);
-          nextHour.setHours(currentHour + 1, 0, 0, 0);
-          
-          const limit = end < nextHour ? end : nextHour;
+          const nextHourBoundary = new Date(cursor);
+          nextHourBoundary.setHours(currentHour + 1, 0, 0, 0);
+          const limit = end < nextHourBoundary ? end : nextHourBoundary;
           const durationMins = (limit - cursor) / 60000;
 
-          if (state === 'available') {
-            hourlyData[currentHour].green += durationMins;
-          } else {
-            hourlyData[currentHour].red += durationMins;
-          }
+          if (state === 'available') hourlyData[currentHour].green += durationMins;
+          else hourlyData[currentHour].red += durationMins;
           
           hourlyData[currentHour].gray = Math.max(0, 60 - (hourlyData[currentHour].green + hourlyData[currentHour].red));
           cursor = limit;
@@ -84,11 +95,43 @@
       return hourlyData;
     }
 
+    function calculateStats(logs) {
+      if (logs.length === 0) return { percent: 0, duration: '...', events: [] };
+      const todayStart = new Date().setHours(0,0,0,0);
+      const logsToday = logs.filter(l => new Date(l.creado_at) >= todayStart);
+      const availableToday = logsToday.filter(l => l.estado === 'available').length;
+      const percent = logsToday.length > 0 ? Math.round((availableToday / logsToday.length) * 100) : 0;
+
+      const currentStatus = logs[logs.length - 1].estado;
+      let lastChangeIdx = logs.length - 1;
+      for (let i = logs.length - 1; i >= 0; i--) {
+        if (logs[i].estado !== currentStatus) { lastChangeIdx = i + 1; break; }
+        if (i === 0) lastChangeIdx = 0;
+      }
+      const diffMs = Date.now() - new Date(logs[lastChangeIdx].creado_at);
+      const mins = Math.floor(diffMs / 60000);
+      const duration = mins >= 60 ? `${Math.floor(mins/60)}h ${mins%60}m` : `${mins} min`;
+
+      const events = [];
+      for (let i = logs.length - 1; i > 0; i--) {
+        if (logs[i].estado !== logs[i-1].estado) {
+          events.push({
+            time: new Date(logs[i].creado_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+            status: logs[i].estado,
+            text: logs[i].estado === 'available' ? 'Se liberó' : 'Se ocupó'
+          });
+        }
+        if (events.length === 3) break;
+      }
+      return { percent, duration, events };
+    }
+
     function renderDashboard(data) {
       const container = document.getElementById('chargers-container');
-      ["pueblo", "bruselas"].forEach(id => {
+      Object.keys(CHARGER_NAMES).forEach(id => {
         const logs = data.filter(l => l.cargador_id === id);
         const lastEntry = logs[logs.length - 1] || { estado: 'unavailable' };
+        const stats = calculateStats(logs);
         
         let card = document.getElementById(`card-${id}`);
         if (!card) {
@@ -97,44 +140,80 @@
           card.className = `charger-card ${lastEntry.estado}`;
           card.innerHTML = `
             <div class="header">
-              <div class="location-info"><span class="location-name">${id}</span></div>
+              <div class="location-info">
+                <span class="location-name">${CHARGER_NAMES[id]}</span>
+                <span class="status-timer">🕒 ...</span>
+                <span class="stats-badge">📊 Hoy disponible: ...</span>
+              </div>
               <span class="status-badge-main">...</span>
             </div>
             <div class="chart-box"><canvas id="chart-${id}"></canvas></div>
+            <div class="history-list"></div>
           `;
           container.appendChild(card);
         }
 
         card.className = `charger-card ${lastEntry.estado}`;
+        card.querySelector('.status-timer').textContent = `🕒 En este estado hace ${stats.duration}`;
+        card.querySelector('.stats-badge').textContent = `📊 Hoy disponible: ${stats.percent}%`;
         card.querySelector('.status-badge-main').textContent = lastEntry.estado === 'available' ? 'LIBRE ✅' : 'OCUPADO ❌';
+        
+        const historyBox = card.querySelector('.history-list');
+        historyBox.innerHTML = `<strong>Últimos movimientos:</strong>` + 
+          (stats.events.map(e => `
+            <div class="history-item">
+              <span><span class="history-dot" style="background:${e.status === 'available' ? '#00b894' : '#d63031'}"></span>${e.text}</span>
+              <span>${e.time}</span>
+            </div>
+          `).join('') || '<div style="opacity:0.5; margin-top:5px;">Sin cambios recientes</div>');
+
         updateChart(id, logs);
       });
     }
 
     function updateChart(id, logs) {
       const stats = processPrecisionData(logs);
-      const ctx = document.getElementById(`chart-${id}`).getContext('2d');
-
-      const dataConfig = {
+      const canvas = document.getElementById(`chart-${id}`);
+      if (!canvas) return;
+      
+      const ctx = canvas.getContext('2d');
+      const dataSets = {
         labels: Array.from({length: 24}, (_, i) => `${i}h`),
         datasets: [
           { label: 'Libre', data: stats.map(s => s.green), backgroundColor: '#00b894', stack: 'A' },
           { label: 'Ocupado', data: stats.map(s => s.red), backgroundColor: '#d63031', stack: 'A' },
-          { label: 'Sin datos', data: stats.map(s => s.gray), backgroundColor: '#e0e0e0', stack: 'A' }
+          { label: 'Sin datos', data: stats.map(s => s.gray), backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--gray'), stack: 'A' }
         ]
       };
 
       if (charts[id]) {
-        charts[id].data = dataConfig;
+        charts[id].data = dataSets;
         charts[id].update('none');
       } else {
         charts[id] = new Chart(ctx, {
           type: 'bar',
-          data: dataConfig,
+          data: dataSets,
           options: {
             responsive: true, maintainAspectRatio: false,
-            scales: { y: { stacked: true, max: 60, display: false }, x: { stacked: true, grid: { display: false } } },
-            plugins: { legend: { display: false } }
+            scales: { 
+              y: { stacked: true, max: 60, display: false }, 
+              x: { stacked: true, grid: { display: false }, ticks: { font: {size: 9} } } 
+            },
+            plugins: { 
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    let label = context.dataset.label || '';
+                    if (label) label += ': ';
+                    if (context.parsed.y !== null) {
+                      label += Math.round(context.parsed.y) + ' min'; // Redondeo en la gráfica
+                    }
+                    return label;
+                  }
+                }
+              }
+            }
           }
         });
       }
