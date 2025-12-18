@@ -16,7 +16,7 @@ async function checkAndSave() {
       const status = data.availableChargersCount > 0 ? 'available' : 'unavailable';
 
       const { error } = await supabase
-        .from('chargers_log') // Asegúrate de que este es el nombre de tu tabla
+        .from('lecturas') // Asegúrate de que este es el nombre de tu tabla
         .insert([{ cargador_id: id, estado: status }]);
 
       if (error) throw error;
