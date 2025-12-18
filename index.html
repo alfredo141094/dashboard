@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Dashboard Qwello Live</title>
+  <title>Dashboard Qwello Pro</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -11,61 +11,103 @@
   <style>
     :root { --bg: #f0f2f5; --card: #ffffff; --text: #1c1e21; --success: #00b894; --danger: #d63031; }
     @media (prefers-color-scheme: dark) { :root { --bg: #121212; --card: #1e1e1e; --text: #e4e6eb; } }
-    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 1rem; display: flex; flex-direction: column; align-items: center; }
+    
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 1rem; display: flex; flex-direction: column; align-items: center; }
     #chargers-container { width: 100%; max-width: 650px; display: flex; flex-direction: column; gap: 1.5rem; }
-    .charger-card { background: var(--card); padding: 1.5rem; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-top: 8px solid #ccc; }
+    
+    .charger-card { background: var(--card); padding: 1.5rem; border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-top: 8px solid #ccc; position: relative; }
     .charger-card.available { border-top-color: var(--success); }
     .charger-card.unavailable { border-top-color: var(--danger); }
-    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-    .status-badge { padding: 0.4rem 0.8rem; border-radius: 50px; font-size: 0.8rem; font-weight: bold; }
+
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; }
+    .location-info { display: flex; flex-direction: column; }
+    .location-name { font-size: 1.1rem; font-weight: bold; }
+    .status-timer { font-size: 0.85rem; opacity: 0.7; margin-top: 2px; }
+    
+    .stats-badge { font-size: 0.75rem; font-weight: bold; padding: 4px 10px; border-radius: 8px; background: rgba(0,0,0,0.05); margin-top: 5px; display: inline-block; }
+
+    .status-badge { padding: 0.4rem 0.8rem; border-radius: 50px; font-size: 0.75rem; font-weight: bold; }
     .available .status-badge { background: #e6fffa; color: #008767; }
     .unavailable .status-badge { background: #fff5f5; color: #a02020; }
-    .chart-box { height: 160px; margin-top: 1rem; }
+
+    .chart-box { height: 140px; margin-top: 1rem; }
+    
+    .history-list { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(0,0,0,0.1); font-size: 0.8rem; }
+    .history-item { display: flex; justify-content: space-between; margin-bottom: 4px; opacity: 0.8; }
+    .history-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+
     footer { margin-top: 2rem; font-size: 0.8rem; opacity: 0.6; text-align: center; }
   </style>
 </head>
 <body>
 
-  <h1>🔌 Monitor Qwello Real-Time</h1>
+  <h1>🔌 Monitor Qwello Pro</h1>
   
   <div id="chargers-container">
-    <p id="msg" style="text-align: center; padding: 2rem;">Cargando datos desde Supabase...</p>
+    <p id="msg" style="text-align: center; padding: 2rem;">Analizando registros...</p>
   </div>
 
-  <footer>
-    Actualización automática activa (cada 30s)<br>
-    Sincronizado: <span id="timestamp">-</span>
-  </footer>
-
   <script>
-    // 1. Configuración de credenciales
     const SB_URL = "https://mmxqckekhfaqrqgcabvh.supabase.co";
     const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1teHFja2VraGZhcXJxZ2NhYnZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwMjczNzEsImV4cCI6MjA4MTYwMzM3MX0.gl7HYm_o-XC7yKqguusx1lM6ULZ_htuuvrKyvoBLQXU";
     
-    // Cambiamos el nombre a sbClient para evitar el SyntaxError
     const sbClient = window.supabase.createClient(SB_URL, SB_KEY);
     const charts = {};
 
     async function loadData() {
-      // Pedimos los últimos 150 registros de la tabla 'lecturas'
+      // Pedimos más datos (300) para poder calcular bien los cambios de estado
       const { data, error } = await sbClient
         .from('lecturas') 
         .select('*')
         .order('creado_at', { ascending: true })
-        .limit(150);
+        .limit(300);
 
-      if (error) {
-        document.getElementById('msg').innerHTML = "❌ Error: " + error.message;
-        return;
-      }
+      if (error) return console.error(error);
 
       if (data && data.length > 0) {
         document.getElementById('msg').style.display = 'none';
         renderDashboard(data);
-      } else {
-        document.getElementById('msg').innerHTML = "Base de datos conectada pero vacía.";
       }
-      document.getElementById("timestamp").textContent = new Date().toLocaleTimeString();
+    }
+
+    function calculateStats(logs) {
+      if (logs.length === 0) return { percent: 0, duration: '...', events: [] };
+
+      // 1. Calcular Porcentaje hoy
+      const today = new Date().setHours(0,0,0,0);
+      const logsToday = logs.filter(l => new Date(l.creado_at) >= today);
+      const availableCount = logsToday.filter(l => l.estado === 'available').length;
+      const percent = logsToday.length > 0 ? Math.round((availableCount / logsToday.length) * 100) : 0;
+
+      // 2. Calcular Tiempo en el estado actual
+      let lastChangeIdx = logs.length - 1;
+      const currentStatus = logs[lastEntryIdx = logs.length - 1].estado;
+      for (let i = logs.length - 1; i >= 0; i--) {
+        if (logs[i].estado !== currentStatus) {
+          lastChangeIdx = i + 1;
+          break;
+        }
+        if (i === 0) lastChangeIdx = 0;
+      }
+      const lastChangeDate = new Date(logs[lastChangeIdx].creado_at);
+      const diffMs = Date.now() - lastChangeDate;
+      const diffMins = Math.floor(diffMs / 60000);
+      const duration = diffMins >= 60 ? `${Math.floor(diffMins/60)}h ${diffMins%60}min` : `${diffMins} min`;
+
+      // 3. Obtener últimos 3 cambios
+      const events = [];
+      for (let i = logs.length - 1; i > 0; i--) {
+        if (logs[i].estado !== logs[i-1].estado) {
+          events.push({
+            time: new Date(logs[i].creado_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+            status: logs[i].estado,
+            text: logs[i].estado === 'available' ? 'Se liberó' : 'Se ocupó'
+          });
+        }
+        if (events.length === 3) break;
+      }
+
+      return { percent, duration, events };
     }
 
     function renderDashboard(data) {
@@ -73,9 +115,9 @@
       const ids = ["pueblo", "bruselas"];
 
       ids.forEach(id => {
-        // Filtrar datos para cada cargador
         const logs = data.filter(l => l.cargador_id === id);
         const lastEntry = logs[logs.length - 1] || { estado: 'unavailable' };
+        const stats = calculateStats(logs);
         
         let card = document.getElementById(`card-${id}`);
         if (!card) {
@@ -87,30 +129,39 @@
         card.className = `charger-card ${lastEntry.estado}`;
         card.innerHTML = `
           <div class="header">
-            <strong>${id === 'pueblo' ? 'Plaza del Pueblo 1' : 'Av. de Bruselas 19'}</strong>
+            <div class="location-info">
+              <span class="location-name">${id === 'pueblo' ? 'Plaza del Pueblo 1' : 'Av. de Bruselas 19'}</span>
+              <span class="status-timer">🕒 En este estado hace ${stats.duration}</span>
+              <span class="stats-badge">📊 Hoy disponible: ${stats.percent}%</span>
+            </div>
             <span class="status-badge">${lastEntry.estado === 'available' ? 'LIBRE ✅' : 'OCUPADO ❌'}</span>
           </div>
+          
           <div class="chart-box"><canvas id="chart-${id}"></canvas></div>
+
+          <div class="history-list">
+            <strong>Últimos movimientos:</strong>
+            ${stats.events.map(e => `
+              <div class="history-item">
+                <span><span class="history-dot" style="background:${e.status === 'available' ? '#00b894' : '#d63031'}"></span>${e.text}</span>
+                <span>${e.time}</span>
+              </div>
+            `).join('') || '<div style="opacity:0.5">Sin cambios recientes</div>'}
+          </div>
         `;
-        
         updateChart(id, logs);
       });
     }
 
     function updateChart(id, logs) {
       const ctx = document.getElementById(`chart-${id}`).getContext('2d');
-      
-      // Mapear el estado a las horas del día (0-23)
       const hourlyData = Array(24).fill(null);
       logs.forEach(log => {
-        const date = new Date(log.creado_at);
-        const hour = date.getHours();
+        const hour = new Date(log.creado_at).getHours();
         hourlyData[hour] = log.estado === 'available' ? 0 : 1;
       });
 
-      const colors = hourlyData.map(v => 
-        v === 0 ? '#00b894' : (v === 1 ? '#d63031' : '#eeeeee')
-      );
+      const colors = hourlyData.map(v => v === 0 ? '#00b894' : (v === 1 ? '#d63031' : '#eee'));
 
       if (charts[id]) {
         charts[id].data.datasets[0].backgroundColor = colors;
@@ -120,22 +171,17 @@
           type: 'bar',
           data: {
             labels: Array.from({length: 24}, (_, i) => `${i}h`),
-            datasets: [{ 
-              data: Array(24).fill(1), 
-              backgroundColor: colors, 
-              borderRadius: 4 
-            }]
+            datasets: [{ data: Array(24).fill(1), backgroundColor: colors, borderRadius: 4 }]
           },
           options: {
             responsive: true, maintainAspectRatio: false,
-            scales: { y: { display: false }, x: { grid: { display: false } } },
+            scales: { y: { display: false }, x: { grid: { display: false }, ticks: { font: {size: 9} } } },
             plugins: { legend: { display: false } }
           }
         });
       }
     }
 
-    // Ejecutar al cargar y cada 30 segundos
     loadData();
     setInterval(loadData, 30000);
   </script>
