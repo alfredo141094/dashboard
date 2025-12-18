@@ -33,7 +33,7 @@
       display: flex; flex-direction: column; align-items: center;
     }
 
-    h1 { margin: 1.5rem 0; font-size: 1.8rem; }
+    h1 { margin: 1.5rem 0; font-size: 1.8rem; text-align: center; }
 
     #chargers-container {
       width: 100%; max-width: 650px;
@@ -43,7 +43,7 @@
     .charger-card {
       background: var(--card-bg);
       padding: 1.5rem;
-      border-radius: 20px;
+      border-radius: 16px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
       border-top: 8px solid #ccc;
       transition: transform 0.2s;
@@ -67,7 +67,7 @@
 
     .chart-container { height: 160px; margin-top: 1rem; }
 
-    footer { margin-top: 3rem; font-size: 0.8rem; opacity: 0.6; text-align: center; }
+    footer { margin-top: 3rem; font-size: 0.8rem; opacity: 0.6; text-align: center; line-height: 1.5; }
     
     .live-indicator {
       display: inline-block; width: 8px; height: 8px;
@@ -77,6 +77,8 @@
     @keyframes pulse {
       0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; }
     }
+
+    .error-msg { color: var(--danger); padding: 20px; text-align: center; background: #ffeeee; border-radius: 10px; }
   </style>
 </head>
 <body>
@@ -84,17 +86,17 @@
   <h1>🔌 Monitor Qwello Real-Time</h1>
 
   <div id="chargers-container">
-    <div style="text-align: center; padding: 2rem;">Conectando con Supabase...</div>
+    <div style="text-align: center; padding: 2rem; opacity: 0.7;">Conectando con Supabase...</div>
   </div>
 
   <footer>
     <span class="live-indicator"></span>
-    Sincronizado con GitHub cada 15 min<br>
-    Última actualización: <span id="timestamp">-</span>
+    Monitorización automática activa vía GitHub Actions<br>
+    Última actualización local: <span id="timestamp">-</span>
   </footer>
 
   <script>
-    // Configuración de tu Supabase
+    // Configuración con tus credenciales reales
     const SB_URL = "https://mmxqckekhfaqrqgcabvh.supabase.co";
     const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1teHFja2VraGZhcXJxZ2NhYnZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwMjczNzEsImV4cCI6MjA4MTYwMzM3MX0.gl7HYm_o-XC7yKqguusx1lM6ULZ_htuuvrKyvoBLQXU";
     
@@ -107,19 +109,39 @@
 
     const charts = {};
 
-    async function updateDashboard() {
-      // Obtenemos datos de las últimas 24 horas
+    async function loadData() {
+      const container = document.getElementById('chargers-container');
+      
+      // Obtenemos datos de las últimas 24 horas de la tabla 'lecturas'
       const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       
       const { data, error } = await supabase
-        .from('chargers_log')
+        .from('lecturas') 
         .select('*')
         .gte('creado_at', oneDayAgo)
         .order('creado_at', { ascending: true });
 
-      if (error) return console.error("Error Supabase:", error);
+      // Manejo de errores de conexión o permisos RLS
+      if (error) {
+        container.innerHTML = `
+          <div class="error-msg">
+            <strong>Error de conexión:</strong> ${error.message}<br>
+            <small>Asegúrate de haber activado las políticas RLS de lectura en Supabase.</small>
+          </div>`;
+        return;
+      }
 
-      const container = document.getElementById('chargers-container');
+      // Si la tabla está vacía
+      if (!data || data.length === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 2rem; opacity: 0.6;">
+            Conexión establecida ✅<br>
+            La tabla 'lecturas' está vacía. Esperando datos de GitHub...
+          </div>`;
+        return;
+      }
+
+      // Limpiar mensaje de carga y renderizar tarjetas
       if (Object.keys(charts).length === 0) container.innerHTML = '';
 
       for (const id in CONFIG) {
@@ -157,7 +179,7 @@
     function updateChart(id, logs) {
       const ctx = document.getElementById(`chart-${id}`).getContext('2d');
       
-      // Mapeamos las 24 horas del día (0-23)
+      // Mapeamos las 24 horas (rellenamos con gris si no hay datos)
       const hourlyData = Array(24).fill(null);
       logs.forEach(log => {
         const hour = new Date(log.creado_at).getHours();
@@ -185,16 +207,22 @@
           options: {
             responsive: true,
             maintainAspectRatio: false,
-            scales: { y: { display: false }, x: { grid: { display: false } } },
-            plugins: { legend: { display: false } }
+            scales: { 
+              y: { display: false }, 
+              x: { grid: { display: false }, ticks: { font: { size: 10 } } } 
+            },
+            plugins: { 
+              legend: { display: false },
+              tooltip: { enabled: false }
+            }
           }
         });
       }
     }
 
-    // Actualizar cada minuto para ver cambios recientes
-    updateDashboard();
-    setInterval(updateDashboard, 60000);
+    // Iniciar carga y refrescar cada 60 segundos
+    loadData();
+    setInterval(loadData, 60000);
   </script>
 </body>
 </html>
