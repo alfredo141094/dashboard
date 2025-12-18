@@ -2,251 +2,139 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Dashboard Qwello Pro</title>
+  <title>Qwello Precision Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  
   <style>
-    :root { 
-      --bg: #f0f2f5; 
-      --card: #ffffff; 
-      --text: #1c1e21; 
-      --success: #00b894; 
-      --danger: #d63031; 
-    }
-    @media (prefers-color-scheme: dark) { 
-      :root { --bg: #121212; --card: #1e1e1e; --text: #e4e6eb; } 
-    }
-    
-    body { 
-      font-family: system-ui, -apple-system, sans-serif; 
-      background: var(--bg); 
-      color: var(--text); 
-      margin: 0; padding: 1rem; 
-      display: flex; flex-direction: column; align-items: center; 
-    }
-    
-    h1 { margin: 1.5rem 0; font-size: 1.8rem; text-align: center; }
-    
-    #chargers-container { 
-      width: 100%; 
-      max-width: 650px; 
-      display: flex; 
-      flex-direction: column; 
-      gap: 1.5rem; 
-    }
-    
-    .charger-card { 
-      background: var(--card); 
-      padding: 1.5rem; 
-      border-radius: 20px; 
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
-      border-top: 8px solid #ccc; 
-      transition: transform 0.2s ease;
-    }
-    
+    :root { --bg: #f0f2f5; --card: #ffffff; --text: #1c1e21; --success: #00b894; --danger: #d63031; --gray: #e0e0e0; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #121212; --card: #1e1e1e; --text: #e4e6eb; --gray: #333; } }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 1rem; display: flex; flex-direction: column; align-items: center; }
+    #chargers-container { width: 100%; max-width: 650px; display: flex; flex-direction: column; gap: 1.5rem; }
+    .charger-card { background: var(--card); padding: 1.5rem; border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-top: 8px solid #ccc; }
     .charger-card.available { border-top-color: var(--success); }
     .charger-card.unavailable { border-top-color: var(--danger); }
-
-    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; }
     .location-info { display: flex; flex-direction: column; }
     .location-name { font-size: 1.1rem; font-weight: bold; }
-    .status-timer { font-size: 0.85rem; opacity: 0.7; margin-top: 2px; }
-    
-    .stats-badge { 
-      font-size: 0.75rem; 
-      font-weight: bold; 
-      padding: 4px 10px; 
-      border-radius: 8px; 
-      background: rgba(0,0,0,0.05); 
-      margin-top: 8px; 
-      display: inline-block; 
-    }
-
-    .status-badge-main { 
-      padding: 0.4rem 0.8rem; 
-      border-radius: 50px; 
-      font-size: 0.75rem; 
-      font-weight: bold; 
-    }
+    .status-badge-main { padding: 0.4rem 0.8rem; border-radius: 50px; font-size: 0.75rem; font-weight: bold; }
     .available .status-badge-main { background: #e6fffa; color: #008767; }
     .unavailable .status-badge-main { background: #fff5f5; color: #a02020; }
-
     .chart-box { height: 140px; margin-top: 1rem; }
-    
-    .history-list { 
-      margin-top: 1rem; 
-      padding-top: 1rem; 
-      border-top: 1px solid rgba(0,0,0,0.1); 
-      font-size: 0.8rem; 
-    }
-    .history-item { display: flex; justify-content: space-between; margin-bottom: 4px; opacity: 0.8; }
-    .history-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
-
     footer { margin-top: 3rem; font-size: 0.8rem; opacity: 0.6; text-align: center; }
   </style>
 </head>
 <body>
 
-  <h1>🔌 Monitor Qwello Pro</h1>
-  
+  <h1>🔌 Qwello Precision Monitor</h1>
   <div id="chargers-container">
-    <p id="msg" style="text-align: center; padding: 2rem;">Inicializando sistema de análisis...</p>
+    <p id="msg" style="text-align: center; padding: 2rem;">Calculando proporciones exactas...</p>
   </div>
-
-  <footer>
-    Actualización automática inteligente (cada 30s)<br>
-    Sincronizado: <span id="timestamp">-</span>
-  </footer>
 
   <script>
     const SB_URL = "https://mmxqckekhfaqrqgcabvh.supabase.co";
     const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1teHFja2VraGZhcXJxZ2NhYnZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwMjczNzEsImV4cCI6MjA4MTYwMzM3MX0.gl7HYm_o-XC7yKqguusx1lM6ULZ_htuuvrKyvoBLQXU";
-    
-    const supabaseClient = window.supabase.createClient(SB_URL, SB_KEY);
+    const sbClient = window.supabase.createClient(SB_URL, SB_KEY);
     const charts = {};
 
     async function loadData() {
-      const { data, error } = await supabaseClient
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const { data, error } = await sbClient
         .from('lecturas') 
         .select('*')
-        .order('creado_at', { ascending: true })
-        .limit(300);
+        .gte('creado_at', oneDayAgo.toISOString())
+        .order('creado_at', { ascending: true });
 
-      if (error) return console.error("Error Supabase:", error);
-
-      if (data && data.length > 0) {
+      if (error) return console.error(error);
+      if (data) {
         document.getElementById('msg').style.display = 'none';
         renderDashboard(data);
       }
-      document.getElementById("timestamp").textContent = new Date().toLocaleTimeString();
     }
 
-    function calculateStats(logs) {
-      if (logs.length === 0) return { percent: 0, duration: '...', events: [] };
+    function processPrecisionData(logs) {
+      const hourlyData = Array(24).fill(null).map(() => ({ green: 0, red: 0, gray: 60 }));
+      if (logs.length < 2) return hourlyData;
 
-      // 1. % Disponibilidad hoy
-      const todayStart = new Date().setHours(0,0,0,0);
-      const logsToday = logs.filter(l => new Date(l.creado_at) >= todayStart);
-      const availableToday = logsToday.filter(l => l.estado === 'available').length;
-      const percent = logsToday.length > 0 ? Math.round((availableToday / logsToday.length) * 100) : 0;
+      for (let i = 0; i < logs.length - 1; i++) {
+        const start = new Date(logs[i].creado_at);
+        const end = new Date(logs[i+1].creado_at);
+        const state = logs[i].estado;
+        
+        let cursor = new Date(start);
 
-      // 2. Tiempo en estado actual
-      const currentStatus = logs[logs.length - 1].estado;
-      let lastChangeIdx = logs.length - 1;
-      for (let i = logs.length - 1; i >= 0; i--) {
-        if (logs[i].estado !== currentStatus) {
-          lastChangeIdx = i + 1;
-          break;
+        while (cursor < end) {
+          const currentHour = cursor.getHours();
+          const nextHour = new Date(cursor);
+          nextHour.setHours(currentHour + 1, 0, 0, 0);
+          
+          const limit = end < nextHour ? end : nextHour;
+          const durationMins = (limit - cursor) / 60000;
+
+          if (state === 'available') {
+            hourlyData[currentHour].green += durationMins;
+          } else {
+            hourlyData[currentHour].red += durationMins;
+          }
+          
+          hourlyData[currentHour].gray = Math.max(0, 60 - (hourlyData[currentHour].green + hourlyData[currentHour].red));
+          cursor = limit;
         }
-        if (i === 0) lastChangeIdx = 0;
       }
-      const diffMs = Date.now() - new Date(logs[lastChangeIdx].creado_at);
-      const mins = Math.floor(diffMs / 60000);
-      const duration = mins >= 60 ? `${Math.floor(mins/60)}h ${mins%60}m` : `${mins} min`;
-
-      // 3. Últimos 3 cambios
-      const events = [];
-      for (let i = logs.length - 1; i > 0; i--) {
-        if (logs[i].estado !== logs[i-1].estado) {
-          events.push({
-            time: new Date(logs[i].creado_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
-            status: logs[i].estado,
-            text: logs[i].estado === 'available' ? 'Se liberó' : 'Se ocupó'
-          });
-        }
-        if (events.length === 3) break;
-      }
-
-      return { percent, duration, events };
+      return hourlyData;
     }
 
     function renderDashboard(data) {
       const container = document.getElementById('chargers-container');
-      const ids = ["pueblo", "bruselas"];
-
-      ids.forEach(id => {
+      ["pueblo", "bruselas"].forEach(id => {
         const logs = data.filter(l => l.cargador_id === id);
         const lastEntry = logs[logs.length - 1] || { estado: 'unavailable' };
-        const stats = calculateStats(logs);
         
         let card = document.getElementById(`card-${id}`);
-        
-        // Crear estructura base solo si no existe
         if (!card) {
           card = document.createElement('div');
           card.id = `card-${id}`;
           card.className = `charger-card ${lastEntry.estado}`;
           card.innerHTML = `
             <div class="header">
-              <div class="location-info">
-                <span class="location-name">${id === 'pueblo' ? 'Plaza del Pueblo 1' : 'Av. de Bruselas 19'}</span>
-                <span class="status-timer">🕒 ...</span>
-                <span class="stats-badge">📊 ...</span>
-              </div>
+              <div class="location-info"><span class="location-name">${id}</span></div>
               <span class="status-badge-main">...</span>
             </div>
             <div class="chart-box"><canvas id="chart-${id}"></canvas></div>
-            <div class="history-list"></div>
           `;
           container.appendChild(card);
         }
 
-        // Actualización parcial (mantiene el canvas vivo)
         card.className = `charger-card ${lastEntry.estado}`;
-        card.querySelector('.status-timer').textContent = `🕒 En este estado hace ${stats.duration}`;
-        card.querySelector('.stats-badge').textContent = `📊 Hoy disponible: ${stats.percent}%`;
-        
-        const badge = card.querySelector('.status-badge-main');
-        badge.textContent = lastEntry.estado === 'available' ? 'LIBRE ✅' : 'OCUPADO ❌';
-
-        const historyBox = card.querySelector('.history-list');
-        historyBox.innerHTML = `<strong>Últimos movimientos:</strong>` + 
-          (stats.events.map(e => `
-            <div class="history-item">
-              <span><span class="history-dot" style="background:${e.status === 'available' ? '#00b894' : '#d63031'}"></span>${e.text}</span>
-              <span>${e.time}</span>
-            </div>
-          `).join('') || '<div style="opacity:0.5; margin-top:5px;">Sin cambios recientes</div>');
-
+        card.querySelector('.status-badge-main').textContent = lastEntry.estado === 'available' ? 'LIBRE ✅' : 'OCUPADO ❌';
         updateChart(id, logs);
       });
     }
 
     function updateChart(id, logs) {
-      const canvas = document.getElementById(`chart-${id}`);
-      if (!canvas) return;
-      
-      const ctx = canvas.getContext('2d');
-      const hourlyData = Array(24).fill(null);
-      
-      logs.forEach(log => {
-        const hour = new Date(log.creado_at).getHours();
-        hourlyData[hour] = log.estado === 'available' ? 0 : 1;
-      });
+      const stats = processPrecisionData(logs);
+      const ctx = document.getElementById(`chart-${id}`).getContext('2d');
 
-      const colors = hourlyData.map(v => v === 0 ? '#00b894' : (v === 1 ? '#d63031' : '#eee'));
+      const dataConfig = {
+        labels: Array.from({length: 24}, (_, i) => `${i}h`),
+        datasets: [
+          { label: 'Libre', data: stats.map(s => s.green), backgroundColor: '#00b894', stack: 'A' },
+          { label: 'Ocupado', data: stats.map(s => s.red), backgroundColor: '#d63031', stack: 'A' },
+          { label: 'Sin datos', data: stats.map(s => s.gray), backgroundColor: '#e0e0e0', stack: 'A' }
+        ]
+      };
 
       if (charts[id]) {
-        charts[id].data.datasets[0].backgroundColor = colors;
-        charts[id].update('none'); // Update sin animaciones para evitar saltos visuales
+        charts[id].data = dataConfig;
+        charts[id].update('none');
       } else {
         charts[id] = new Chart(ctx, {
           type: 'bar',
-          data: {
-            labels: Array.from({length: 24}, (_, i) => `${i}h`),
-            datasets: [{ data: Array(24).fill(1), backgroundColor: colors, borderRadius: 4 }]
-          },
+          data: dataConfig,
           options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: { 
-              y: { display: false }, 
-              x: { grid: { display: false }, ticks: { font: {size: 9} } } 
-            },
-            plugins: { legend: { display: false }, tooltip: { enabled: false } }
+            responsive: true, maintainAspectRatio: false,
+            scales: { y: { stacked: true, max: 60, display: false }, x: { stacked: true, grid: { display: false } } },
+            plugins: { legend: { display: false } }
           }
         });
       }
