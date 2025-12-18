@@ -2,227 +2,142 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Dashboard Qwello Real-Time</title>
+  <title>Dashboard Qwello Live</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   
   <style>
-    :root {
-      --bg-color: #f0f2f5;
-      --card-bg: #ffffff;
-      --text-main: #1c1e21;
-      --success: #00b894;
-      --danger: #d63031;
-    }
-
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg-color: #121212;
-        --card-bg: #1e1e1e;
-        --text-main: #e4e6eb;
-      }
-    }
-
-    body {
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      background-color: var(--bg-color);
-      color: var(--text-main);
-      margin: 0; padding: 1rem;
-      display: flex; flex-direction: column; align-items: center;
-    }
-
-    h1 { margin: 1.5rem 0; font-size: 1.8rem; text-align: center; }
-
-    #chargers-container {
-      width: 100%; max-width: 650px;
-      display: flex; flex-direction: column; gap: 1.5rem;
-    }
-
-    .charger-card {
-      background: var(--card-bg);
-      padding: 1.5rem;
-      border-radius: 16px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      border-top: 8px solid #ccc;
-      transition: transform 0.2s;
-    }
-
+    :root { --bg: #f0f2f5; --card: #ffffff; --text: #1c1e21; --success: #00b894; --danger: #d63031; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #121212; --card: #1e1e1e; --text: #e4e6eb; } }
+    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 1rem; display: flex; flex-direction: column; align-items: center; }
+    #chargers-container { width: 100%; max-width: 650px; display: flex; flex-direction: column; gap: 1.5rem; }
+    .charger-card { background: var(--card); padding: 1.5rem; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-top: 8px solid #ccc; }
     .charger-card.available { border-top-color: var(--success); }
     .charger-card.unavailable { border-top-color: var(--danger); }
-
     .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-    .location-name { font-size: 1.1rem; font-weight: bold; }
-    
-    .status-badge {
-      padding: 0.4rem 0.8rem;
-      border-radius: 50px;
-      font-size: 0.75rem;
-      font-weight: bold;
-      text-transform: uppercase;
-    }
+    .status-badge { padding: 0.4rem 0.8rem; border-radius: 50px; font-size: 0.8rem; font-weight: bold; }
     .available .status-badge { background: #e6fffa; color: #008767; }
     .unavailable .status-badge { background: #fff5f5; color: #a02020; }
-
-    .chart-container { height: 160px; margin-top: 1rem; }
-
-    footer { margin-top: 3rem; font-size: 0.8rem; opacity: 0.6; text-align: center; line-height: 1.5; }
-    
-    .live-indicator {
-      display: inline-block; width: 8px; height: 8px;
-      background: var(--success); border-radius: 50%;
-      margin-right: 5px; animation: pulse 2s infinite;
-    }
-    @keyframes pulse {
-      0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; }
-    }
-
-    .error-msg { color: var(--danger); padding: 20px; text-align: center; background: #ffeeee; border-radius: 10px; }
+    .chart-box { height: 160px; margin-top: 1rem; }
+    footer { margin-top: 2rem; font-size: 0.8rem; opacity: 0.6; text-align: center; }
   </style>
 </head>
 <body>
 
   <h1>🔌 Monitor Qwello Real-Time</h1>
-
+  
   <div id="chargers-container">
-    <div style="text-align: center; padding: 2rem; opacity: 0.7;">Conectando con Supabase...</div>
+    <p id="msg" style="text-align: center; padding: 2rem;">Cargando datos desde Supabase...</p>
   </div>
 
   <footer>
-    <span class="live-indicator"></span>
-    Monitorización automática activa vía GitHub Actions<br>
-    Última actualización local: <span id="timestamp">-</span>
+    Actualización automática activa (cada 30s)<br>
+    Sincronizado: <span id="timestamp">-</span>
   </footer>
 
   <script>
-    // Configuración con tus credenciales reales
+    // 1. Configuración de credenciales
     const SB_URL = "https://mmxqckekhfaqrqgcabvh.supabase.co";
     const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1teHFja2VraGZhcXJxZ2NhYnZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwMjczNzEsImV4cCI6MjA4MTYwMzM3MX0.gl7HYm_o-XC7yKqguusx1lM6ULZ_htuuvrKyvoBLQXU";
     
-    const supabase = window.supabase.createClient(SB_URL, SB_KEY);
-
-    const CONFIG = {
-      pueblo: { name: "Plaza del Pueblo 1" },
-      bruselas: { name: "Av. de Bruselas 19" }
-    };
-
+    // Cambiamos el nombre a sbClient para evitar el SyntaxError
+    const sbClient = window.supabase.createClient(SB_URL, SB_KEY);
     const charts = {};
 
     async function loadData() {
-      const container = document.getElementById('chargers-container');
-      
-      // Obtenemos datos de las últimas 24 horas de la tabla 'lecturas'
-      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      
-      const { data, error } = await supabase
+      // Pedimos los últimos 150 registros de la tabla 'lecturas'
+      const { data, error } = await sbClient
         .from('lecturas') 
         .select('*')
-        .gte('creado_at', oneDayAgo)
-        .order('creado_at', { ascending: true });
+        .order('creado_at', { ascending: true })
+        .limit(150);
 
-      // Manejo de errores de conexión o permisos RLS
       if (error) {
-        container.innerHTML = `
-          <div class="error-msg">
-            <strong>Error de conexión:</strong> ${error.message}<br>
-            <small>Asegúrate de haber activado las políticas RLS de lectura en Supabase.</small>
-          </div>`;
+        document.getElementById('msg').innerHTML = "❌ Error: " + error.message;
         return;
       }
 
-      // Si la tabla está vacía
-      if (!data || data.length === 0) {
-        container.innerHTML = `
-          <div style="text-align: center; padding: 2rem; opacity: 0.6;">
-            Conexión establecida ✅<br>
-            La tabla 'lecturas' está vacía. Esperando datos de GitHub...
-          </div>`;
-        return;
+      if (data && data.length > 0) {
+        document.getElementById('msg').style.display = 'none';
+        renderDashboard(data);
+      } else {
+        document.getElementById('msg').innerHTML = "Base de datos conectada pero vacía.";
       }
-
-      // Limpiar mensaje de carga y renderizar tarjetas
-      if (Object.keys(charts).length === 0) container.innerHTML = '';
-
-      for (const id in CONFIG) {
-        const logs = data.filter(l => l.cargador_id === id);
-        const lastEntry = logs[logs.length - 1] || { estado: 'unavailable' };
-        
-        renderCard(id, lastEntry.estado, logs);
-      }
-      
       document.getElementById("timestamp").textContent = new Date().toLocaleTimeString();
     }
 
-    function renderCard(id, state, logs) {
-      let card = document.getElementById(`card-${id}`);
-      if (!card) {
-        card = document.createElement('div');
-        card.id = `card-${id}`;
-        document.getElementById('chargers-container').appendChild(card);
-      }
+    function renderDashboard(data) {
+      const container = document.getElementById('chargers-container');
+      const ids = ["pueblo", "bruselas"];
 
-      card.className = `charger-card ${state}`;
-      card.innerHTML = `
-        <div class="header">
-          <div class="location-name">${CONFIG[id].name}</div>
-          <div class="status-badge">${state === 'available' ? 'Disponible ✅' : 'Ocupado ❌'}</div>
-        </div>
-        <div class="chart-container">
-          <canvas id="chart-${id}"></canvas>
-        </div>
-      `;
+      ids.forEach(id => {
+        // Filtrar datos para cada cargador
+        const logs = data.filter(l => l.cargador_id === id);
+        const lastEntry = logs[logs.length - 1] || { estado: 'unavailable' };
+        
+        let card = document.getElementById(`card-${id}`);
+        if (!card) {
+          card = document.createElement('div');
+          card.id = `card-${id}`;
+          container.appendChild(card);
+        }
 
-      updateChart(id, logs);
+        card.className = `charger-card ${lastEntry.estado}`;
+        card.innerHTML = `
+          <div class="header">
+            <strong>${id === 'pueblo' ? 'Plaza del Pueblo 1' : 'Av. de Bruselas 19'}</strong>
+            <span class="status-badge">${lastEntry.estado === 'available' ? 'LIBRE ✅' : 'OCUPADO ❌'}</span>
+          </div>
+          <div class="chart-box"><canvas id="chart-${id}"></canvas></div>
+        `;
+        
+        updateChart(id, logs);
+      });
     }
 
     function updateChart(id, logs) {
       const ctx = document.getElementById(`chart-${id}`).getContext('2d');
       
-      // Mapeamos las 24 horas (rellenamos con gris si no hay datos)
+      // Mapear el estado a las horas del día (0-23)
       const hourlyData = Array(24).fill(null);
       logs.forEach(log => {
-        const hour = new Date(log.creado_at).getHours();
+        const date = new Date(log.creado_at);
+        const hour = date.getHours();
         hourlyData[hour] = log.estado === 'available' ? 0 : 1;
       });
 
-      const backgroundColors = hourlyData.map(v => 
-        v === 0 ? '#2ecc71' : (v === 1 ? '#e74c3c' : '#e0e0e0')
+      const colors = hourlyData.map(v => 
+        v === 0 ? '#00b894' : (v === 1 ? '#d63031' : '#eeeeee')
       );
 
       if (charts[id]) {
-        charts[id].data.datasets[0].backgroundColor = backgroundColors;
+        charts[id].data.datasets[0].backgroundColor = colors;
         charts[id].update();
       } else {
         charts[id] = new Chart(ctx, {
           type: 'bar',
           data: {
             labels: Array.from({length: 24}, (_, i) => `${i}h`),
-            datasets: [{
-              data: Array(24).fill(1),
-              backgroundColor: backgroundColors,
-              borderRadius: 4
+            datasets: [{ 
+              data: Array(24).fill(1), 
+              backgroundColor: colors, 
+              borderRadius: 4 
             }]
           },
           options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: { 
-              y: { display: false }, 
-              x: { grid: { display: false }, ticks: { font: { size: 10 } } } 
-            },
-            plugins: { 
-              legend: { display: false },
-              tooltip: { enabled: false }
-            }
+            responsive: true, maintainAspectRatio: false,
+            scales: { y: { display: false }, x: { grid: { display: false } } },
+            plugins: { legend: { display: false } }
           }
         });
       }
     }
 
-    // Iniciar carga y refrescar cada 60 segundos
+    // Ejecutar al cargar y cada 30 segundos
     loadData();
-    setInterval(loadData, 60000);
+    setInterval(loadData, 30000);
   </script>
 </body>
 </html>
