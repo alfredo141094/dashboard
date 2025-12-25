@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Monitor Qwello | Consistencia AM-PM</title>
+  <title>Monitor Qwello | Dual Chrono Precision</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -12,10 +12,10 @@
       --card: #0d1117;
       --green: #00f298;
       --red: #ff3e3e;
-      --empty: #161b22;
+      --empty: #1a1f26;
       --text: #ffffff;
       --dim: #8b949e;
-      --border: #21262d;
+      --border: #30363d;
     }
 
     body {
@@ -29,37 +29,26 @@
       align-items: center;
     }
 
-    .status-hero { text-align: center; margin-bottom: 3rem; }
-    .status-val { font-size: 4rem; font-weight: 900; margin: 0; letter-spacing: -3px; }
-    .free { color: var(--green); text-shadow: 0 0 25px rgba(0,242,152,0.4); }
-    .busy { color: var(--red); text-shadow: 0 0 25px rgba(255,62,62,0.4); }
+    .header { text-align: center; margin-bottom: 3rem; }
+    .status-hero { font-size: 3.5rem; font-weight: 900; margin: 0; letter-spacing: -2px; }
+    .is-free { color: var(--green); text-shadow: 0 0 25px rgba(0,242,152,0.4); }
+    .is-busy { color: var(--red); text-shadow: 0 0 25px rgba(255,62,62,0.4); }
 
-    .main-grid {
+    .clocks-container {
       display: flex;
       flex-wrap: wrap;
       gap: 3rem;
       justify-content: center;
       width: 100%;
-      max-width: 1000px;
+      max-width: 1100px;
     }
 
-    .column {
+    .clock-column {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 1.5rem;
       width: 340px;
-    }
-
-    /* --- EL RELOJ --- */
-    .clock-frame {
-      position: relative;
-      width: 320px;
-      height: 320px;
-      background: var(--card);
-      border-radius: 50%;
-      padding: 15px;
-      border: 1px solid var(--border);
+      gap: 1.5rem;
     }
 
     .clock-label {
@@ -67,10 +56,20 @@
       font-weight: 800;
       color: var(--dim);
       letter-spacing: 2px;
-      margin-bottom: 0.5rem;
+      text-transform: uppercase;
     }
 
-    .center-label {
+    .clock-frame {
+      position: relative;
+      width: 320px;
+      height: 320px;
+      background: var(--card);
+      border-radius: 50%;
+      padding: 10px;
+      border: 1px solid var(--border);
+    }
+
+    .center-info {
       position: absolute;
       top: 50%;
       left: 50%;
@@ -78,106 +77,91 @@
       text-align: center;
     }
 
-    .digi-time { font-size: 2rem; font-weight: 800; font-family: monospace; }
+    .digital-now { font-size: 1.8rem; font-weight: 800; font-family: monospace; }
 
-    /* --- EL CUADRADO DE DATOS (LEYENDA) --- */
-    .data-square {
+    /* Marcas Horarias */
+    .hour-marker { position: absolute; font-weight: 900; color: #444c56; font-size: 0.85rem; z-index: 5; }
+    .m12 { top: 15px; left: 50%; transform: translateX(-50%); }
+    .m3  { right: 15px; top: 50%; transform: translateY(-50%); }
+    .m6  { bottom: 15px; left: 50%; transform: translateX(-50%); }
+    .m9  { left: 15px; top: 50%; transform: translateY(-50%); }
+
+    /* --- PANEL DE EVENTOS ESPECÍFICO --- */
+    .events-panel {
       width: 100%;
       background: var(--card);
       border-radius: 16px;
-      padding: 1.5rem;
-      border: 1px solid var(--border);
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1rem;
-    }
-
-    .stat-box { display: flex; flex-direction: column; }
-    .stat-val { font-size: 1.2rem; font-weight: 800; margin-top: 4px; }
-    .stat-lbl { font-size: 0.65rem; font-weight: 700; color: var(--dim); text-transform: uppercase; }
-
-    /* --- EVENTS --- */
-    .events-footer {
-      margin-top: 4rem;
-      width: 100%;
-      max-width: 500px;
-      background: var(--card);
-      padding: 1.5rem;
-      border-radius: 20px;
+      padding: 1.25rem;
       border: 1px solid var(--border);
     }
 
-    .event-item {
+    .events-title {
+      font-size: 0.7rem;
+      font-weight: 800;
+      color: var(--dim);
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+      display: block;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+
+    .event-row {
       display: flex;
       justify-content: space-between;
       padding: 10px 0;
       border-bottom: 1px solid var(--border);
-      font-size: 0.9rem;
+      font-size: 0.85rem;
     }
+    .event-row:last-child { border: none; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 10px; }
   </style>
 </head>
 <body>
 
-  <div class="status-hero">
+  <div class="header">
     <span style="color:var(--dim); font-weight:800; letter-spacing:1px">PLAZA DEL PUEBLO, 1</span>
-    <h1 id="main-status" class="status-val">...</h1>
+    <h1 id="status-val" class="status-hero">SIN DATOS</h1>
   </div>
 
-  <div class="main-grid">
-    <div class="column">
-      <div class="clock-label">MAÑANA (AM)</div>
+  <div class="clocks-container">
+    <div class="clock-column">
+      <div class="clock-label">Mañana (00:00 - 12:00)</div>
       <div class="clock-frame">
-        <canvas id="canvasAM"></canvas>
-        <div class="center-label">
-          <div class="digi-time" id="txtAM">--:--</div>
-          <div style="font-size:0.6rem; color:var(--dim); font-weight:bold">00h - 12h</div>
+        <span class="hour-marker m12">12</span>
+        <span class="hour-marker m3">3</span>
+        <span class="hour-marker m6">6</span>
+        <span class="hour-marker m9">9</span>
+        <canvas id="chartAM"></canvas>
+        <div class="center-info">
+          <div class="digital-now" id="timeAM">--:--</div>
+          <div style="font-size:0.6rem; color:var(--dim); font-weight:bold">AM</div>
         </div>
       </div>
-      <div class="data-square">
-        <div class="stat-box">
-          <span class="stat-lbl">Disponible</span>
-          <span class="stat-val" id="am-avail" style="color:var(--green)">0h 0m</span>
-        </div>
-        <div class="stat-box">
-          <span class="stat-lbl">Ocupado</span>
-          <span class="stat-val" id="am-busy" style="color:var(--red)">0h 0m</span>
-        </div>
-        <div class="stat-box" style="grid-column: span 2; border-top: 1px solid var(--border); pt: 10px;">
-          <span class="stat-lbl">Uso en este tramo</span>
-          <span class="stat-val" id="am-percent">0%</span>
-        </div>
+      <div class="events-panel">
+        <span class="events-title">Actividad Mañana</span>
+        <div id="listAM"></div>
       </div>
     </div>
 
-    <div class="column">
-      <div class="clock-label">TARDE/NOCHE (PM)</div>
+    <div class="clock-column">
+      <div class="clock-label">Tarde/Noche (12:00 - 00:00)</div>
       <div class="clock-frame">
-        <canvas id="canvasPM"></canvas>
-        <div class="center-label">
-          <div class="digi-time" id="txtPM">--:--</div>
-          <div style="font-size:0.6rem; color:var(--dim); font-weight:bold">12h - 00h</div>
+        <span class="hour-marker m12">12</span>
+        <span class="hour-marker m3">3</span>
+        <span class="hour-marker m6">6</span>
+        <span class="hour-marker m9">9</span>
+        <canvas id="chartPM"></canvas>
+        <div class="center-info">
+          <div class="digital-now" id="timePM">--:--</div>
+          <div style="font-size:0.6rem; color:var(--dim); font-weight:bold">PM</div>
         </div>
       </div>
-      <div class="data-square">
-        <div class="stat-box">
-          <span class="stat-lbl">Disponible</span>
-          <span class="stat-val" id="pm-avail" style="color:var(--green)">0h 0m</span>
-        </div>
-        <div class="stat-box">
-          <span class="stat-lbl">Ocupado</span>
-          <span class="stat-val" id="pm-busy" style="color:var(--red)">0h 0m</span>
-        </div>
-        <div class="stat-box" style="grid-column: span 2; border-top: 1px solid var(--border); pt: 10px;">
-          <span class="stat-lbl">Uso en este tramo</span>
-          <span class="stat-val" id="pm-percent">0%</span>
-        </div>
+      <div class="events-panel">
+        <span class="events-title">Actividad Tarde</span>
+        <div id="listPM"></div>
       </div>
     </div>
-  </div>
-
-  <div class="events-footer">
-    <span style="font-size:0.75rem; font-weight:800; color:var(--dim); text-transform:uppercase">Historial de cambios</span>
-    <div id="event-list"></div>
   </div>
 
 <script>
@@ -185,35 +169,32 @@
   const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1teHFja2VraGZhcXJxZ2NhYnZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwMjczNzEsImV4cCI6MjA4MTYwMzM3MX0.gl7HYm_o-XC7yKqguusx1lM6ULZ_htuuvrKyvoBLQXU";
   const sbClient = window.supabase.createClient(SB_URL, SB_KEY);
   
-  let chartAM, chartPM;
+  let myChartAM, myChartPM;
 
-  async function update() {
+  async function sync() {
     const now = new Date();
     const { data } = await sbClient.from('lecturas').select('*').eq('cargador_id', 'pueblo').order('creado_at', { ascending: true });
 
-    if (data) {
-      renderStatus(data[data.length-1]);
+    if (data && data.length > 0) {
+      renderStatus(data[data.length - 1]);
       const timeline = buildTimeline(data, now);
       
-      const amData = timeline.slice(0, 720);
-      const pmData = timeline.slice(720, 1440);
+      // Renderizar relojes
+      renderClock(timeline.slice(0, 720), 'chartAM', 'myChartAM');
+      renderClock(timeline.slice(720, 1440), 'chartPM', 'myChartPM');
+      
+      // Renderizar eventos segmentados
+      renderEvents(data.filter(d => new Date(d.creado_at).getHours() < 12), 'listAM');
+      renderEvents(data.filter(d => new Date(d.creado_at).getHours() >= 12), 'listPM');
 
-      renderClock(amData, 'canvasAM', 'chartAM');
-      renderClock(pmData, 'canvasPM', 'chartPM');
-      
-      updateSquares(amData, 'am', now.getHours() < 12 ? (now.getHours()*60 + now.getMinutes()) : 720);
-      updateSquares(pmData, 'pm', now.getHours() >= 12 ? ((now.getHours()-12)*60 + now.getMinutes()) : 0);
-      
-      renderEvents(data);
-      
       const timeStr = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-      document.getElementById('txtAM').textContent = now.getHours() < 12 ? timeStr : "--:--";
-      document.getElementById('txtPM').textContent = now.getHours() >= 12 ? timeStr : "--:--";
+      document.getElementById('timeAM').textContent = now.getHours() < 12 ? timeStr : "--:--";
+      document.getElementById('timePM').textContent = now.getHours() >= 12 ? timeStr : "--:--";
     }
   }
 
   function buildTimeline(logs, now) {
-    const timeline = Array(1440).fill('#161b22');
+    const timeline = Array(1440).fill('var(--empty)');
     const limit = (now.getHours() * 60) + now.getMinutes();
     let lastState = logs[0].estado;
     let logIdx = 0;
@@ -230,56 +211,62 @@
     return timeline;
   }
 
-  function updateSquares(data, prefix, elapsedMins) {
-    const busyMins = data.filter(c => c === '#ff3e3e').length;
-    const availMins = data.filter(c => c === '#00f298').length;
-    
-    const toTime = (m) => `${Math.floor(m/60)}h ${m%60}m`;
-    
-    document.getElementById(`${prefix}-avail`).textContent = toTime(availMins);
-    document.getElementById(`${prefix}-busy`).textContent = toTime(busyMins);
-    
-    const percent = elapsedMins > 0 ? Math.round((busyMins / elapsedMins) * 100) : 0;
-    document.getElementById(`${prefix}-percent`).textContent = percent + "% de ocupación";
-  }
-
-  function renderStatus(last) {
-    const el = document.getElementById('main-status');
-    const free = last.estado === 'available';
-    el.textContent = free ? 'LIBRE' : 'OCUPADO';
-    el.className = `status-val ${free ? 'free' : 'busy'}`;
-  }
-
   function renderClock(minuteColors, canvasId, chartVar) {
     const ctx = document.getElementById(canvasId).getContext('2d');
-    if (canvasId === 'canvasAM' && chartAM) chartAM.destroy();
-    if (canvasId === 'canvasPM' && chartPM) chartPM.destroy();
+    if (canvasId === 'chartAM' && myChartAM) myChartAM.destroy();
+    if (canvasId === 'chartPM' && myChartPM) myChartPM.destroy();
 
     const chart = new Chart(ctx, {
       type: 'doughnut',
-      data: { datasets: [{ data: Array(720).fill(1), backgroundColor: minuteColors, borderWidth: 0 }] },
-      options: { rotation: -90, cutout: '85%', animation: false, plugins: { legend: {display:false}, tooltip: {enabled:false} } }
+      data: {
+        datasets: [{
+          data: Array(720).fill(1),
+          backgroundColor: minuteColors,
+          borderWidth: 0,
+          // Añadimos un pequeño borde cada 60 min para las 12 divisiones
+          borderColor: (context) => (context.dataIndex % 60 === 0 ? '#05070a' : 'transparent'),
+          hoverOffset: 0
+        }]
+      },
+      options: {
+        rotation: -90,
+        cutout: '84%',
+        animation: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { enabled: false }
+        }
+      }
     });
-    if (canvasId === 'canvasAM') chartAM = chart; else chartPM = chart;
+
+    if (canvasId === 'chartAM') myChartAM = chart;
+    else myChartPM = chart;
   }
 
-  function renderEvents(data) {
-    const log = document.getElementById('event-list');
+  function renderEvents(subset, listId) {
+    const list = document.getElementById(listId);
     const moves = [];
-    for (let i = data.length-1; i > 0; i--) {
-      if (data[i].estado !== data[i-1].estado) moves.push(data[i]);
+    for (let i = subset.length - 1; i > 0; i--) {
+      if (subset[i].estado !== subset[i - 1].estado) moves.push(subset[i]);
       if (moves.length === 3) break;
     }
-    log.innerHTML = moves.map(m => `
-      <div class="event-item">
-        <span><span style="width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:10px;background:${m.estado==='available'?'var(--green)':'var(--red)'}"></span>${m.estado==='available'?'Liberado':'Ocupado'}</span>
-        <span style="color:var(--dim)">${new Date(m.creado_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+    list.innerHTML = moves.map(m => `
+      <div class="event-row">
+        <span><span class="dot" style="background:${m.estado==='available'?'var(--green)':'var(--red)'}"></span>${m.estado==='available'?'Liberado':'Ocupado'}</span>
+        <span style="color:var(--dim); font-weight:700">${new Date(m.creado_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
       </div>
-    `).join('');
+    `).join('') || '<div style="color:var(--dim); font-size:0.75rem; text-align:center">Sin actividad en este tramo</div>';
   }
 
-  update();
-  setInterval(update, 30000);
+  function renderStatus(last) {
+    const el = document.getElementById('status-val');
+    const free = last.estado === 'available';
+    el.textContent = free ? 'LIBRE' : 'OCUPADO';
+    el.className = `status-hero ${free ? 'is-free' : 'is-busy'}`;
+  }
+
+  sync();
+  setInterval(sync, 30000);
 </script>
 </body>
 </html>
