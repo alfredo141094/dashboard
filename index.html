@@ -2,18 +2,19 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Qwello Pro | Dual Chrono</title>
+  <title>Monitor Qwello | Dual 12h AM-PM</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
-      --bg: #0a0e14;
+      --bg: #0d1117;
       --card: #161b22;
       --green: #00f298;
       --red: #ff3e3e;
       --text: #ffffff;
       --dim: #8b949e;
+      --border: #30363d;
     }
 
     body {
@@ -27,44 +28,41 @@
       align-items: center;
     }
 
-    .header-status { text-align: center; margin-bottom: 2rem; }
-    .main-title { font-size: 3rem; font-weight: 900; letter-spacing: -2px; margin: 0; }
+    .header { text-align: center; margin-bottom: 3rem; }
+    .status-title { font-size: 3.5rem; font-weight: 900; margin: 0; letter-spacing: -2px; }
     .is-free { color: var(--green); text-shadow: 0 0 20px rgba(0,242,152,0.3); }
     .is-busy { color: var(--red); text-shadow: 0 0 20px rgba(255,62,62,0.3); }
 
-    /* --- LAYOUT DUAL CLOCK --- */
-    .clocks-container {
+    .clocks-wrapper {
       display: flex;
       flex-wrap: wrap;
-      gap: 2rem;
+      gap: 3rem;
       justify-content: center;
       width: 100%;
-      max-width: 900px;
-      margin-bottom: 2rem;
+      max-width: 1000px;
     }
 
-    .clock-box {
+    .clock-container {
       position: relative;
-      width: 320px;
-      height: 320px;
+      width: 340px;
+      height: 340px;
       background: var(--card);
       border-radius: 50%;
-      padding: 10px;
-      border: 1px solid #30363d;
+      border: 1px solid var(--border);
+      padding: 15px;
     }
 
     .clock-label {
       position: absolute;
+      top: -35px;
       width: 100%;
       text-align: center;
-      top: -30px;
-      font-size: 0.75rem;
       font-weight: 800;
       color: var(--dim);
-      text-transform: uppercase;
+      letter-spacing: 2px;
     }
 
-    .center-info {
+    .center-time {
       position: absolute;
       top: 50%;
       left: 50%;
@@ -72,78 +70,78 @@
       text-align: center;
     }
 
-    .digital-now { font-size: 1.5rem; font-weight: 800; font-family: monospace; }
-    
-    /* Marcas horarias fijas */
-    .hour-mark {
-      position: absolute;
-      font-size: 0.7rem;
-      font-weight: 700;
-      color: var(--dim);
-    }
-    .h12 { top: 15px; left: 50%; transform: translateX(-50%); }
-    .h3 { right: 15px; top: 50%; transform: translateY(-50%); }
-    .h6 { bottom: 15px; left: 50%; transform: translateX(-50%); }
-    .h9 { left: 15px; top: 50%; transform: translateY(-50%); }
+    .digital-clock { font-size: 2rem; font-weight: 800; font-family: monospace; }
 
-    /* --- EVENTS --- */
+    /* Marcas horarias fijas */
+    .hour-num {
+      position: absolute;
+      font-weight: 800;
+      color: var(--dim);
+      font-size: 0.9rem;
+    }
+    .n12 { top: 20px; left: 50%; transform: translateX(-50%); }
+    .n3  { right: 20px; top: 50%; transform: translateY(-50%); }
+    .n6  { bottom: 20px; left: 50%; transform: translateX(-50%); }
+    .n9  { left: 20px; top: 50%; transform: translateY(-50%); }
+
     .events-panel {
+      margin-top: 4rem;
       width: 100%;
-      max-width: 450px;
+      max-width: 500px;
       background: var(--card);
       border-radius: 20px;
       padding: 1.5rem;
-      border: 1px solid #30363d;
+      border: 1px solid var(--border);
     }
 
-    .event-item {
+    .event-row {
       display: flex;
       justify-content: space-between;
-      padding: 10px 0;
-      border-bottom: 1px solid #30363d;
-      font-size: 0.9rem;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
     }
-    .event-dot { width: 8px; height: 8px; border-radius: 50%; margin-right: 10px; display: inline-block; }
+    .event-row:last-child { border: none; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 10px; }
   </style>
 </head>
 <body>
 
-  <div class="header-status">
-    <span style="color:var(--dim); font-weight:700">PLAZA DEL PUEBLO, 1</span>
-    <h1 id="status-txt" class="main-title">...</h1>
+  <div class="header">
+    <span style="color:var(--dim); font-weight:700; letter-spacing:1px">PLAZA DEL PUEBLO, 1</span>
+    <h1 id="status-display" class="status-title">...</h1>
   </div>
 
-  <div class="clocks-container">
-    <div class="clock-box">
-      <span class="clock-label">Detalle 12 Horas (AM/PM)</span>
-      <span class="hour-mark h12">12</span>
-      <span class="hour-mark h3">3</span>
-      <span class="hour-mark h6">6</span>
-      <span class="hour-mark h9">9</span>
-      <canvas id="chart12"></canvas>
-      <div class="center-info">
-        <div class="digital-now" id="time12">00:00</div>
-        <div style="font-size:0.6rem; color:var(--dim)">AHORA</div>
+  <div class="clocks-wrapper">
+    <div class="clock-container">
+      <div class="clock-label">MAÑANA (AM)</div>
+      <span class="hour-num n12">12</span>
+      <span class="hour-num n3">3</span>
+      <span class="hour-num n6">6</span>
+      <span class="hour-num n9">9</span>
+      <canvas id="chartAM"></canvas>
+      <div class="center-time">
+        <div class="digital-clock" id="clockAM">00:00</div>
+        <div style="font-size:0.7rem; color:var(--dim)">00:00 - 12:00</div>
       </div>
     </div>
 
-    <div class="clock-box">
-      <span class="clock-label">Vista Global 24 Horas</span>
-      <span class="hour-mark h12">00</span>
-      <span class="hour-mark h3">06</span>
-      <span class="hour-mark h6">12</span>
-      <span class="hour-mark h9">18</span>
-      <canvas id="chart24"></canvas>
-      <div class="center-info">
-        <div class="digital-now">24H</div>
-        <div style="font-size:0.6rem; color:var(--dim)">HISTORIAL</div>
+    <div class="clock-container">
+      <div class="clock-label">TARDE/NOCHE (PM)</div>
+      <span class="hour-num n12">12</span>
+      <span class="hour-num n3">3</span>
+      <span class="hour-num n6">6</span>
+      <span class="hour-num n9">9</span>
+      <canvas id="chartPM"></canvas>
+      <div class="center-time">
+        <div class="digital-clock" id="clockPM">12:00</div>
+        <div style="font-size:0.7rem; color:var(--dim)">12:00 - 00:00</div>
       </div>
     </div>
   </div>
 
   <div class="events-panel">
-    <span style="font-size:0.7rem; font-weight:800; color:var(--dim)">MOVIMIENTOS RECIENTES</span>
-    <div id="event-log"></div>
+    <span style="font-size:0.8rem; font-weight:800; color:var(--dim); text-transform:uppercase">Últimos Cambios</span>
+    <div id="event-list"></div>
   </div>
 
 <script>
@@ -151,96 +149,115 @@
   const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1teHFja2VraGZhcXJxZ2NhYnZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwMjczNzEsImV4cCI6MjA4MTYwMzM3MX0.gl7HYm_o-XC7yKqguusx1lM6ULZ_htuuvrKyvoBLQXU";
   const sbClient = window.supabase.createClient(SB_URL, SB_KEY);
   
-  let chart12, chart24;
+  let chartAM, chartPM;
 
-  async function updateAll() {
+  function updateClockStrings() {
     const now = new Date();
-    document.getElementById('time12').textContent = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    const timeStr = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    if (now.getHours() < 12) {
+      document.getElementById('clockAM').textContent = timeStr;
+      document.getElementById('clockPM').textContent = "--:--";
+    } else {
+      document.getElementById('clockPM').textContent = timeStr;
+      document.getElementById('clockAM').textContent = "--:--";
+    }
+  }
 
+  async function syncData() {
+    updateClockStrings();
     const { data } = await sbClient
       .from('lecturas')
       .select('*')
       .eq('cargador_id', 'pueblo')
-      .gte('creado_at', new Date(Date.now() - 24*60*60*1000).toISOString())
       .order('creado_at', { ascending: true });
 
     if (data) {
       renderStatus(data[data.length-1]);
-      renderClock(data, 12, 'chart12');
-      renderClock(data, 24, 'chart24');
+      const timeline = buildTimeline(data);
+      renderClock(timeline.slice(0, 720), 'chartAM');   // 00:00 a 11:59
+      renderClock(timeline.slice(720, 1440), 'chartPM'); // 12:00 a 23:59
       renderEvents(data);
     }
   }
 
-  function renderStatus(last) {
-    const el = document.getElementById('status-txt');
-    const free = last.estado === 'available';
-    el.textContent = free ? 'LIBRE' : 'OCUPADO';
-    el.className = `main-title ${free ? 'is-free' : 'is-busy'}`;
+  // Crea un array de 1440 minutos (24h) sin huecos
+  function buildTimeline(logs) {
+    const timeline = Array(1440).fill(null);
+    let lastState = logs[0].estado;
+    
+    // Rellenamos basándonos en los eventos
+    let logIdx = 0;
+    for (let i = 0; i < 1440; i++) {
+      const currentMinuteDate = new Date();
+      currentMinuteDate.setHours(0, i, 0, 0);
+      
+      if (logIdx < logs.length) {
+        const logDate = new Date(logs[logIdx].creado_at);
+        if (currentMinuteDate >= logDate) {
+          lastState = logs[logIdx].estado;
+          logIdx++;
+        }
+      }
+      timeline[i] = lastState === 'available' ? '#00f298' : '#ff3e3e';
+    }
+    return timeline;
   }
 
-  function renderClock(data, hours, canvasId) {
-    const segments = hours * 4; // 15 min por segmento para precisión
-    const states = Array(segments).fill('#1a1f26'); // Fondo vacío
-    
-    data.forEach(d => {
-      const date = new Date(d.creado_at);
-      const h = date.getHours();
-      const m = date.getMinutes();
-      
-      let idx;
-      if (hours === 12) {
-        idx = ((h % 12) * 4) + Math.floor(m / 15);
-      } else {
-        idx = (h * 4) + Math.floor(m / 15);
-      }
-      states[idx] = d.estado === 'available' ? '#00f298' : '#ff3e3e';
-    });
+  function renderStatus(last) {
+    const el = document.getElementById('status-display');
+    const free = last.estado === 'available';
+    el.textContent = free ? 'LIBRE' : 'OCUPADO';
+    el.className = `status-title ${free ? 'is-free' : 'is-busy'}`;
+  }
 
+  function renderClock(minuteData, canvasId) {
     const ctx = document.getElementById(canvasId).getContext('2d');
-    const config = {
+    const chartRef = canvasId === 'chartAM' ? chartAM : chartPM;
+    
+    // Dibujamos 12 sectores principales para los bordes horários
+    // Pero cada sector tiene 60 micro-segmentos internos
+    if (chartRef) chartRef.destroy();
+
+    const newChart = new Chart(ctx, {
       type: 'doughnut',
       data: {
         datasets: [{
-          data: Array(segments).fill(1),
-          backgroundColor: states,
-          borderWidth: 2,
-          borderColor: '#0a0e14'
+          data: Array(720).fill(1),
+          backgroundColor: minuteData,
+          borderWidth: 0,
         }]
       },
       options: {
-        rotation: -90, // El 12 arriba
-        cutout: '80%',
-        plugins: { legend: {display:false}, tooltip: {enabled:false} }
+        rotation: -90, // Empezar a las 12h
+        cutout: '82%',
+        plugins: { 
+          legend: { display: false }, 
+          tooltip: { enabled: false } 
+        }
       }
-    };
+    });
 
-    if (canvasId === 'chart12') {
-      if (chart12) chart12.destroy();
-      chart12 = new Chart(ctx, config);
-    } else {
-      if (chart24) chart24.destroy();
-      chart24 = new Chart(ctx, config);
-    }
+    if (canvasId === 'chartAM') chartAM = newChart;
+    else chartPM = newChart;
   }
 
   function renderEvents(data) {
-    const log = document.getElementById('event-log');
+    const log = document.getElementById('event-list');
     const moves = [];
     for (let i = data.length-1; i > 0; i--) {
       if (data[i].estado !== data[i-1].estado) moves.push(data[i]);
       if (moves.length === 3) break;
     }
     log.innerHTML = moves.map(m => `
-      <div class="event-item">
-        <span><span class="event-dot" style="background:${m.estado==='available'?'#00f298':'#ff3e3e'}"></span>${m.estado==='available'?'Se liberó':'Se ocupó'}</span>
-        <span style="color:var(--dim)">${new Date(m.creado_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+      <div class="event-row">
+        <span><span class="dot" style="background:${m.estado==='available'?'var(--green)':'var(--red)'}"></span>${m.estado==='available'?'Punto Liberado':'Carga Iniciada'}</span>
+        <span style="color:var(--dim); font-weight:600">${new Date(m.creado_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
       </div>
     `).join('');
   }
 
-  updateAll();
-  setInterval(updateAll, 30000);
+  syncData();
+  setInterval(syncData, 30000);
 </script>
 </body>
 </html>
