@@ -2,136 +2,148 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Qwello Pro | Reloj de Precisión</title>
+  <title>Qwello Pro | Chrono 12h</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
-      --primary: #00f298; /* Verde Neón Pro */
-      --danger: #ff3e3e;  /* Rojo Alerta */
-      --bg: #0a0e14;      /* Negro Profundo */
-      --card: #161b22;
+      --bg: #05070a;
+      --card: #111418;
+      --green: #00ff95;
+      --red: #ff3b3b;
       --text: #ffffff;
-      --text-dim: #8b949e;
+      --text-dim: #666e7a;
+      --accent: #1a1f26;
     }
 
     body {
-      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-family: 'Inter', system-ui, sans-serif;
       background: var(--bg);
       color: var(--text);
       margin: 0;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 2rem 1rem;
+      padding: 3rem 1rem;
     }
 
-    /* --- ESTADO ACTUAL (HERO) --- */
+    /* --- HEADER PRO --- */
     .status-header {
       text-align: center;
-      margin-bottom: 2rem;
+      margin-bottom: 2.5rem;
     }
 
-    .main-badge {
-      font-size: 3rem;
-      font-weight: 900;
-      text-transform: uppercase;
-      letter-spacing: -2px;
-      margin: 0;
-      line-height: 1;
-    }
-
-    .status-available { color: var(--primary); text-shadow: 0 0 20px rgba(0,242,152,0.4); }
-    .status-occupied { color: var(--danger); text-shadow: 0 0 20px rgba(255,62,62,0.4); }
-
-    .location-label {
+    .location-tag {
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 0.2em;
       color: var(--text-dim);
-      font-size: 1rem;
-      font-weight: 500;
-      margin-top: 0.5rem;
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
       display: block;
     }
 
-    /* --- EL RELOJ --- */
-    .clock-container {
-      position: relative;
-      width: 100%;
-      max-width: 350px;
-      margin-bottom: 2rem;
+    .main-status {
+      font-size: 4rem;
+      font-weight: 900;
+      margin: 0;
+      line-height: 0.9;
+      letter-spacing: -3px;
     }
 
-    .current-time-display {
+    .is-free { color: var(--green); text-shadow: 0 0 30px rgba(0, 255, 149, 0.3); }
+    .is-busy { color: var(--red); text-shadow: 0 0 30px rgba(255, 59, 59, 0.3); }
+
+    /* --- CHRONO CLOCK --- */
+    .chrono-wrapper {
+      position: relative;
+      width: 320px;
+      height: 320px;
+      margin-bottom: 3rem;
+    }
+
+    .chrono-center {
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
       text-align: center;
+      z-index: 10;
     }
 
-    .digital-clock {
-      font-size: 1.8rem;
+    .time-now {
+      font-size: 2.2rem;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      margin-bottom: -5px;
+    }
+
+    .time-label {
+      font-size: 0.65rem;
       font-weight: 700;
-      font-family: monospace;
+      color: var(--text-dim);
+      letter-spacing: 1px;
     }
 
-    /* --- EVENTOS --- */
-    .events-panel {
+    /* --- EVENT LIST --- */
+    .events-box {
       width: 100%;
-      max-width: 400px;
+      max-width: 360px;
       background: var(--card);
-      border-radius: 20px;
+      border-radius: 24px;
       padding: 1.5rem;
-      border: 1px solid #30363d;
+      border: 1px solid var(--accent);
     }
 
-    .event-item {
+    .event-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 0.8rem 0;
-      border-bottom: 1px solid #30363d;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid var(--accent);
     }
 
-    .event-item:last-child { border: none; }
+    .event-row:last-child { border: none; }
 
-    .event-dot {
-      width: 10px;
-      height: 10px;
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
       border-radius: 50%;
       margin-right: 12px;
-      display: inline-block;
     }
 
-    .label-pro {
-      font-size: 0.75rem;
+    .timestamp {
       color: var(--text-dim);
-      text-transform: uppercase;
-      font-weight: 800;
-      margin-bottom: 1rem;
-      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
     }
   </style>
 </head>
 <body>
 
   <div class="status-header">
-    <span class="location-label">PLAZA DEL PUEBLO, 1</span>
-    <h1 id="status-text" class="main-badge status-available">LIBRE</h1>
-    <span id="last-update" class="location-label" style="font-size: 0.8rem;">Actualizado hace 1 min</span>
+    <span class="location-tag">Plaza del Pueblo, 1</span>
+    <h1 id="status-title" class="main-status is-free">...</h1>
   </div>
 
-  <div class="clock-container">
-    <canvas id="radialClock"></canvas>
-    <div class="current-time-display">
-      <div class="digital-clock" id="clock-digital">00:00:00</div>
-      <div style="font-size: 0.7rem; color: var(--text-dim); font-weight: bold;">HISTORIAL 24H</div>
+  <div class="chrono-wrapper">
+    <canvas id="chronoCanvas"></canvas>
+    <div class="chrono-center">
+      <div class="time-now" id="digital-clock">00:00</div>
+      <div class="time-label">HISTORIAL 12H</div>
     </div>
   </div>
 
-  <div class="events-panel">
-    <span class="label-pro">Movimientos Recientes</span>
-    <div id="event-log">
+  <div class="events-box">
+    <div id="event-list">
       </div>
   </div>
 
@@ -139,92 +151,86 @@
   const SB_URL = "https://mmxqckekhfaqrqgcabvh.supabase.co";
   const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1teHFja2VraGZhcXJxZ2NhYnZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwMjczNzEsImV4cCI6MjA4MTYwMzM3MX0.gl7HYm_o-XC7yKqguusx1lM6ULZ_htuuvrKyvoBLQXU";
   const sbClient = window.supabase.createClient(SB_URL, SB_KEY);
-  let radialChart;
+  let myChart;
 
-  function updateTime() {
+  function updateDigitalClock() {
     const now = new Date();
-    document.getElementById('clock-digital').textContent = now.toLocaleTimeString('es-ES', { hour12: false });
+    document.getElementById('digital-clock').textContent = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
   }
-  setInterval(updateTime, 1000);
+  setInterval(updateDigitalClock, 1000);
 
-  async function refreshData() {
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  async function fetchData() {
+    // Pedimos las últimas 12 horas
+    const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
     const { data, error } = await sbClient
       .from('lecturas')
       .select('*')
       .eq('cargador_id', 'pueblo')
-      .gte('creado_at', oneDayAgo)
+      .gte('creado_at', twelveHoursAgo)
       .order('creado_at', { ascending: true });
 
-    if (data) {
-      processAndRender(data);
-    }
+    if (data) processUI(data);
   }
 
-  function processAndRender(data) {
+  function processUI(data) {
     const last = data[data.length - 1];
-    const statusEl = document.getElementById('status-text');
-    
-    // 1. Estado Actual
     const isFree = last.estado === 'available';
-    statusEl.textContent = isFree ? 'LIBRE' : 'OCUPADO';
-    statusEl.className = `main-badge ${isFree ? 'status-available' : 'status-occupied'}`;
+    
+    // 1. Estado principal
+    const title = document.getElementById('status-title');
+    title.textContent = isFree ? 'LIBRE' : 'OCUPADO';
+    title.className = `main-status ${isFree ? 'is-free' : 'is-busy'}`;
 
-    // 2. Lógica del Reloj (24 segmentos de 1 hora)
-    const hourlyData = Array(24).fill('available'); // Por defecto libre para evitar grises
+    // 2. Procesar Reloj de 12 Horas
+    // Creamos 12 bloques (uno por hora)
+    const hourlyStates = Array(12).fill('available');
+    const now = new Date();
+    
     data.forEach(d => {
-      const hour = new Date(d.creado_at).getHours();
-      // Si en esa hora hubo ocupación significante, la marcamos
-      if (d.estado === 'occupied' || d.estado === 'unavailable') {
-        hourlyData[hour] = 'occupied';
-      }
+      const entryHour = new Date(d.creado_at).getHours();
+      const clockHour = entryHour % 12 || 12; // Convertir 0-23 a 1-12
+      // Si hay un solo registro de ocupado en esa hora, la marcamos como ocupada
+      if (d.estado !== 'available') hourlyStates[clockHour - 1] = 'occupied';
     });
 
-    renderRadial(hourlyData);
-    renderRecentEvents(data);
+    renderChrono(hourlyStates);
+    renderList(data);
   }
 
-  function renderRadial(hourlyData) {
-    const ctx = document.getElementById('radialClock').getContext('2d');
+  function renderChrono(states) {
+    const ctx = document.getElementById('chronoCanvas').getContext('2d');
     
-    // Reordenar datos para que el reloj empiece arriba (hora actual al final)
-    const currentHour = new Date().getHours();
-    const rotatedData = [];
-    const labels = [];
-    for (let i = 0; i < 24; i++) {
-      const h = (i + 1) % 24;
-      rotatedData.push(hourlyData[h] === 'available' ? 1 : 1);
-      labels.push(h + "h");
-    }
+    // El orden de Chart.js empieza a las 3 en punto, rotamos para empezar a las 12
+    const backgroundColors = states.map(s => s === 'available' ? '#00ff95' : '#ff3b3b');
 
-    const colors = rotatedData.map((_, i) => {
-      const h = (i + 1) % 24;
-      return hourlyData[h] === 'available' ? '#00f298' : '#ff3e3e';
-    });
+    if (myChart) myChart.destroy();
 
-    if (radialChart) radialChart.destroy();
-
-    radialChart = new Chart(ctx, {
+    myChart = new Chart(ctx, {
       type: 'doughnut',
       data: {
         datasets: [{
-          data: Array(24).fill(1),
-          backgroundColor: colors,
-          borderWidth: 2,
-          borderColor: '#0a0e14'
+          data: Array(12).fill(1), // 12 segmentos iguales
+          backgroundColor: backgroundColors,
+          borderWidth: 4,
+          borderColor: '#05070a', // Color del fondo para separar segmentos
+          hoverOffset: 0
         }]
       },
       options: {
-        cutout: '85%',
-        plugins: { legend: { display: false }, tooltip: { enabled: false } },
-        animation: { animateRotate: true }
+        rotation: -15, // Alinea el primer segmento a las 12 en punto
+        cutout: '88%',
+        plugins: {
+          legend: { display: false },
+          tooltip: { enabled: false }
+        }
       }
     });
   }
 
-  function renderRecentEvents(data) {
-    const log = document.getElementById('event-log');
+  function renderList(data) {
+    const list = document.getElementById('event-list');
     const movements = [];
+    // Buscamos los últimos 3 cambios reales de estado
     for (let i = data.length - 1; i > 0; i--) {
       if (data[i].estado !== data[i-1].estado) {
         movements.push(data[i]);
@@ -232,19 +238,19 @@
       if (movements.length === 3) break;
     }
 
-    log.innerHTML = movements.map(m => `
-      <div class="event-item">
-        <span>
-          <span class="event-dot" style="background: ${m.estado === 'available' ? 'var(--primary)' : 'var(--danger)'}"></span>
-          <span style="font-weight: 600;">${m.estado === 'available' ? 'Se liberó' : 'Se ocupó'}</span>
-        </span>
-        <span style="color: var(--text-dim); font-size: 0.9rem;">${new Date(m.creado_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+    list.innerHTML = movements.map(m => `
+      <div class="event-row">
+        <div class="status-indicator">
+          <div class="dot" style="background: ${m.estado === 'available' ? 'var(--green)' : 'var(--red)'}"></div>
+          ${m.estado === 'available' ? 'Punto Liberado' : 'Carga Iniciada'}
+        </div>
+        <div class="timestamp">${new Date(m.creado_at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</div>
       </div>
-    `).join('');
+    `).join('') || '<div class="timestamp" style="text-align:center">Sin cambios en las últimas 12h</div>';
   }
 
-  refreshData();
-  setInterval(refreshData, 30000);
+  fetchData();
+  setInterval(fetchData, 30000); // Sincroniza cada 30 segundos
 </script>
 </body>
 </html>
