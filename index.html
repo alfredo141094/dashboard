@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Monitor Qwello | Dual Chrono Precision</title>
+  <title>Monitor Qwello | Dual Chrono Fix</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -79,14 +79,12 @@
 
     .digital-now { font-size: 1.8rem; font-weight: 800; font-family: monospace; }
 
-    /* Marcas Horarias */
     .hour-marker { position: absolute; font-weight: 900; color: #444c56; font-size: 0.85rem; z-index: 5; }
     .m12 { top: 15px; left: 50%; transform: translateX(-50%); }
     .m3  { right: 15px; top: 50%; transform: translateY(-50%); }
     .m6  { bottom: 15px; left: 50%; transform: translateX(-50%); }
     .m9  { left: 15px; top: 50%; transform: translateY(-50%); }
 
-    /* --- PANEL DE EVENTOS ESPECÍFICO --- */
     .events-panel {
       width: 100%;
       background: var(--card);
@@ -173,40 +171,54 @@
 
   async function sync() {
     const now = new Date();
-    const { data } = await sbClient.from('lecturas').select('*').eq('cargador_id', 'pueblo').order('creado_at', { ascending: true });
+    // Obtenemos solo los datos de HOY (desde las 00:00)
+    const todayStart = new Date(now);
+    todayStart.setHours(0,0,0,0);
+
+    const { data } = await sbClient
+      .from('lecturas')
+      .select('*')
+      .eq('cargador_id', 'pueblo')
+      .gte('creado_at', todayStart.toISOString())
+      .order('creado_at', { ascending: true });
 
     if (data && data.length > 0) {
       renderStatus(data[data.length - 1]);
-      const timeline = buildTimeline(data, now);
+      const timeline = buildPrecisionTimeline(data, now);
       
-      // Renderizar relojes
       renderClock(timeline.slice(0, 720), 'chartAM', 'myChartAM');
       renderClock(timeline.slice(720, 1440), 'chartPM', 'myChartPM');
       
-      // Renderizar eventos segmentados
       renderEvents(data.filter(d => new Date(d.creado_at).getHours() < 12), 'listAM');
       renderEvents(data.filter(d => new Date(d.creado_at).getHours() >= 12), 'listPM');
 
       const timeStr = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-      document.getElementById('timeAM').textContent = now.getHours() < 12 ? timeStr : "--:--";
+      document.getElementById('timeAM').textContent = now.getHours() < 12 ? timeStr : "12:00";
       document.getElementById('timePM').textContent = now.getHours() >= 12 ? timeStr : "--:--";
     }
   }
 
-  function buildTimeline(logs, now) {
+  function buildPrecisionTimeline(logs, now) {
     const timeline = Array(1440).fill('var(--empty)');
-    const limit = (now.getHours() * 60) + now.getMinutes();
+    const currentTotalMinutes = (now.getHours() * 60) + now.getMinutes();
+    
+    // Referencia de inicio del día en milisegundos
+    const startMs = new Date(now).setHours(0,0,0,0);
+    
     let lastState = logs[0].estado;
     let logIdx = 0;
 
-    for (let i = 0; i <= limit; i++) {
-      const currentMin = new Date();
-      currentMin.setHours(0, i, 0, 0);
-      while(logIdx < logs.length && currentMin >= new Date(logs[logIdx].creado_at)) {
-        lastState = logs[logIdx].estado;
-        logIdx++;
+    for (let i = 0; i < 1440; i++) {
+      if (i <= currentTotalMinutes) {
+        const minuteMs = startMs + (i * 60000);
+        
+        // Sincronizar con el último log disponible antes de este minuto
+        while(logIdx < logs.length && new Date(logs[logIdx].creado_at).getTime() <= minuteMs) {
+          lastState = logs[logIdx].estado;
+          logIdx++;
+        }
+        timeline[i] = lastState === 'available' ? '#00f298' : '#ff3e3e';
       }
-      timeline[i] = lastState === 'available' ? '#00f298' : '#ff3e3e';
     }
     return timeline;
   }
@@ -223,7 +235,6 @@
           data: Array(720).fill(1),
           backgroundColor: minuteColors,
           borderWidth: 0,
-          // Añadimos un pequeño borde cada 60 min para las 12 divisiones
           borderColor: (context) => (context.dataIndex % 60 === 0 ? '#05070a' : 'transparent'),
           hoverOffset: 0
         }]
@@ -232,10 +243,7 @@
         rotation: -90,
         cutout: '84%',
         animation: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: { enabled: false }
-        }
+        plugins: { legend: { display: false }, tooltip: { enabled: false } }
       }
     });
 
@@ -248,11 +256,11 @@
     const moves = [];
     for (let i = subset.length - 1; i > 0; i--) {
       if (subset[i].estado !== subset[i - 1].estado) moves.push(subset[i]);
-      if (moves.length === 3) break;
+      if (moves.length === 4) break;
     }
     list.innerHTML = moves.map(m => `
       <div class="event-row">
-        <span><span class="dot" style="background:${m.estado==='available'?'var(--green)':'var(--red)'}"></span>${m.estado==='available'?'Liberado':'Ocupado'}</span>
+        <span><span class="dot" style="background:${m.estado==='available'?'var(--green)':'var(--red)'}"></span>${m.estado==='available' ? 'Liberado' : 'Ocupado'}</span>
         <span style="color:var(--dim); font-weight:700">${new Date(m.creado_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
       </div>
     `).join('') || '<div style="color:var(--dim); font-size:0.75rem; text-align:center">Sin actividad en este tramo</div>';
