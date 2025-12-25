@@ -2,19 +2,19 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Monitor Qwello | Dual 12h AM-PM</title>
+  <title>Monitor Qwello | Real-Time Chrono</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
-      --bg: #0d1117;
-      --card: #161b22;
+      --bg: #05070a;
+      --card: #0d1117;
       --green: #00f298;
       --red: #ff3e3e;
+      --empty: #1a1f26; /* Color para el "futuro" */
       --text: #ffffff;
       --dim: #8b949e;
-      --border: #30363d;
     }
 
     body {
@@ -30,26 +30,26 @@
 
     .header { text-align: center; margin-bottom: 3rem; }
     .status-title { font-size: 3.5rem; font-weight: 900; margin: 0; letter-spacing: -2px; }
-    .is-free { color: var(--green); text-shadow: 0 0 20px rgba(0,242,152,0.3); }
-    .is-busy { color: var(--red); text-shadow: 0 0 20px rgba(255,62,62,0.3); }
+    .is-free { color: var(--green); text-shadow: 0 0 25px rgba(0,242,152,0.4); }
+    .is-busy { color: var(--red); text-shadow: 0 0 25px rgba(255,62,62,0.4); }
 
-    .clocks-wrapper {
+    .clocks-grid {
       display: flex;
       flex-wrap: wrap;
-      gap: 3rem;
+      gap: 4rem;
       justify-content: center;
       width: 100%;
-      max-width: 1000px;
+      max-width: 1100px;
     }
 
     .clock-container {
       position: relative;
-      width: 340px;
-      height: 340px;
+      width: 320px;
+      height: 320px;
       background: var(--card);
       border-radius: 50%;
-      border: 1px solid var(--border);
       padding: 15px;
+      border: 1px solid #21262d;
     }
 
     .clock-label {
@@ -57,12 +57,13 @@
       top: -35px;
       width: 100%;
       text-align: center;
+      font-size: 0.8rem;
       font-weight: 800;
       color: var(--dim);
       letter-spacing: 2px;
     }
 
-    .center-time {
+    .center-info {
       position: absolute;
       top: 50%;
       left: 50%;
@@ -70,77 +71,72 @@
       text-align: center;
     }
 
-    .digital-clock { font-size: 2rem; font-weight: 800; font-family: monospace; }
+    .digital-clock { font-size: 1.8rem; font-weight: 800; font-family: 'Courier New', monospace; }
 
-    /* Marcas horarias fijas */
-    .hour-num {
-      position: absolute;
-      font-weight: 800;
-      color: var(--dim);
-      font-size: 0.9rem;
-    }
-    .n12 { top: 20px; left: 50%; transform: translateX(-50%); }
-    .n3  { right: 20px; top: 50%; transform: translateY(-50%); }
-    .n6  { bottom: 20px; left: 50%; transform: translateX(-50%); }
-    .n9  { left: 20px; top: 50%; transform: translateY(-50%); }
+    /* Números del reloj */
+    .hour-marker { position: absolute; font-weight: 900; color: #30363d; font-size: 0.9rem; }
+    .m12 { top: 20px; left: 50%; transform: translateX(-50%); }
+    .m3  { right: 20px; top: 50%; transform: translateY(-50%); }
+    .m6  { bottom: 20px; left: 50%; transform: translateX(-50%); }
+    .m9  { left: 20px; top: 50%; transform: translateY(-50%); }
 
     .events-panel {
       margin-top: 4rem;
       width: 100%;
-      max-width: 500px;
+      max-width: 480px;
       background: var(--card);
       border-radius: 20px;
       padding: 1.5rem;
-      border: 1px solid var(--border);
+      border: 1px solid #21262d;
     }
 
     .event-row {
       display: flex;
       justify-content: space-between;
       padding: 12px 0;
-      border-bottom: 1px solid var(--border);
+      border-bottom: 1px solid #21262d;
     }
     .event-row:last-child { border: none; }
-    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 10px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 12px; }
   </style>
 </head>
 <body>
 
   <div class="header">
-    <span style="color:var(--dim); font-weight:700; letter-spacing:1px">PLAZA DEL PUEBLO, 1</span>
-    <h1 id="status-display" class="status-title">...</h1>
+    <span style="color:var(--dim); font-weight:800; letter-spacing:1px">PLAZA DEL PUEBLO, 1</span>
+    <h1 id="live-status" class="status-title">SIN DATOS</h1>
   </div>
 
-  <div class="clocks-wrapper">
+  <div class="clocks-grid">
     <div class="clock-container">
-      <div class="clock-label">MAÑANA (AM)</div>
-      <span class="hour-num n12">12</span>
-      <span class="hour-num n3">3</span>
-      <span class="hour-num n6">6</span>
-      <span class="hour-num n9">9</span>
-      <canvas id="chartAM"></canvas>
-      <div class="center-time">
-        <div class="digital-clock" id="clockAM">00:00</div>
-        <div style="font-size:0.7rem; color:var(--dim)">00:00 - 12:00</div>
+      <div class="clock-label">MAÑANA (00:00 - 12:00)</div>
+      <span class="hour-marker m12">12</span>
+      <span class="hour-marker m3">3</span>
+      <span class="hour-marker m6">6</span>
+      <span class="hour-marker m9">9</span>
+      <canvas id="canvasAM"></canvas>
+      <div class="center-info">
+        <div class="digital-clock" id="txtAM">--:--</div>
+        <div style="font-size:0.6rem; color:var(--dim); font-weight:bold">AM</div>
       </div>
     </div>
 
     <div class="clock-container">
-      <div class="clock-label">TARDE/NOCHE (PM)</div>
-      <span class="hour-num n12">12</span>
-      <span class="hour-num n3">3</span>
-      <span class="hour-num n6">6</span>
-      <span class="hour-num n9">9</span>
-      <canvas id="chartPM"></canvas>
-      <div class="center-time">
-        <div class="digital-clock" id="clockPM">12:00</div>
-        <div style="font-size:0.7rem; color:var(--dim)">12:00 - 00:00</div>
+      <div class="clock-label">TARDE/NOCHE (12:00 - 00:00)</div>
+      <span class="hour-marker m12">12</span>
+      <span class="hour-marker m3">3</span>
+      <span class="hour-marker m6">6</span>
+      <span class="hour-marker m9">9</span>
+      <canvas id="canvasPM"></canvas>
+      <div class="center-info">
+        <div class="digital-clock" id="txtPM">--:--</div>
+        <div style="font-size:0.6rem; color:var(--dim); font-weight:bold">PM</div>
       </div>
     </div>
   </div>
 
   <div class="events-panel">
-    <span style="font-size:0.8rem; font-weight:800; color:var(--dim); text-transform:uppercase">Últimos Cambios</span>
+    <span style="font-size:0.75rem; font-weight:800; color:var(--dim); text-transform:uppercase">Movimientos Recientes</span>
     <div id="event-list"></div>
   </div>
 
@@ -151,93 +147,100 @@
   
   let chartAM, chartPM;
 
-  function updateClockStrings() {
+  async function updateDashboard() {
     const now = new Date();
     const timeStr = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    
+    // Actualizar relojes digitales centrales
     if (now.getHours() < 12) {
-      document.getElementById('clockAM').textContent = timeStr;
-      document.getElementById('clockPM').textContent = "--:--";
+      document.getElementById('txtAM').textContent = timeStr;
+      document.getElementById('txtPM').textContent = "--:--";
     } else {
-      document.getElementById('clockPM').textContent = timeStr;
-      document.getElementById('clockAM').textContent = "--:--";
+      document.getElementById('txtPM').textContent = timeStr;
+      document.getElementById('txtAM').textContent = "--:--";
     }
-  }
 
-  async function syncData() {
-    updateClockStrings();
     const { data } = await sbClient
       .from('lecturas')
       .select('*')
       .eq('cargador_id', 'pueblo')
       .order('creado_at', { ascending: true });
 
-    if (data) {
-      renderStatus(data[data.length-1]);
-      const timeline = buildTimeline(data);
-      renderClock(timeline.slice(0, 720), 'chartAM');   // 00:00 a 11:59
-      renderClock(timeline.slice(720, 1440), 'chartPM'); // 12:00 a 23:59
+    if (data && data.length > 0) {
+      const lastEntry = data[data.length - 1];
+      renderStatus(lastEntry);
+      
+      const fullTimeline = buildProgressiveTimeline(data, now);
+      renderClock(fullTimeline.slice(0, 720), 'canvasAM', 'chartAM');
+      renderClock(fullTimeline.slice(720, 1440), 'canvasPM', 'chartPM');
       renderEvents(data);
     }
   }
 
-  // Crea un array de 1440 minutos (24h) sin huecos
-  function buildTimeline(logs) {
-    const timeline = Array(1440).fill(null);
-    let lastState = logs[0].estado;
-    
-    // Rellenamos basándonos en los eventos
-    let logIdx = 0;
-    for (let i = 0; i < 1440; i++) {
-      const currentMinuteDate = new Date();
-      currentMinuteDate.setHours(0, i, 0, 0);
-      
-      if (logIdx < logs.length) {
-        const logDate = new Date(logs[logIdx].creado_at);
-        if (currentMinuteDate >= logDate) {
-          lastState = logs[logIdx].estado;
-          logIdx++;
-        }
-      }
-      timeline[i] = lastState === 'available' ? '#00f298' : '#ff3e3e';
-    }
-    return timeline;
-  }
-
   function renderStatus(last) {
-    const el = document.getElementById('status-display');
+    const el = document.getElementById('live-status');
     const free = last.estado === 'available';
     el.textContent = free ? 'LIBRE' : 'OCUPADO';
     el.className = `status-title ${free ? 'is-free' : 'is-busy'}`;
   }
 
-  function renderClock(minuteData, canvasId) {
-    const ctx = document.getElementById(canvasId).getContext('2d');
-    const chartRef = canvasId === 'chartAM' ? chartAM : chartPM;
+  function buildProgressiveTimeline(logs, now) {
+    const timeline = Array(1440).fill('var(--empty)');
+    const currentTotalMinutes = (now.getHours() * 60) + now.getMinutes();
     
-    // Dibujamos 12 sectores principales para los bordes horários
-    // Pero cada sector tiene 60 micro-segmentos internos
-    if (chartRef) chartRef.destroy();
+    let lastState = logs[0].estado;
+    let logIdx = 0;
+
+    for (let i = 0; i < 1440; i++) {
+      // Solo pintamos color si el minuto 'i' ya ha pasado hoy
+      if (i <= currentTotalMinutes) {
+        const currentMinuteDate = new Date();
+        currentMinuteDate.setHours(0, i, 0, 0);
+
+        // Buscar si hay una actualización de estado en este minuto
+        while (logIdx < logs.length) {
+          const logDate = new Date(logs[logIdx].creado_at);
+          if (currentMinuteDate >= logDate) {
+            lastState = logs[logIdx].estado;
+            logIdx++;
+          } else {
+            break;
+          }
+        }
+        timeline[i] = lastState === 'available' ? '#00f298' : '#ff3e3e';
+      } else {
+        // Es el futuro: sin color
+        timeline[i] = '#1a1f26';
+      }
+    }
+    return timeline;
+  }
+
+  function renderClock(minuteColors, canvasId, chartVar) {
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    
+    // Reutilizar instancia de Chart si existe
+    if (canvasId === 'canvasAM' && chartAM) chartAM.destroy();
+    if (canvasId === 'canvasPM' && chartPM) chartPM.destroy();
 
     const newChart = new Chart(ctx, {
       type: 'doughnut',
       data: {
         datasets: [{
           data: Array(720).fill(1),
-          backgroundColor: minuteData,
+          backgroundColor: minuteColors,
           borderWidth: 0,
         }]
       },
       options: {
-        rotation: -90, // Empezar a las 12h
-        cutout: '82%',
-        plugins: { 
-          legend: { display: false }, 
-          tooltip: { enabled: false } 
-        }
+        rotation: -90, // Las 12 arriba
+        cutout: '84%',
+        animation: false, // Sin animaciones para que el pintado sea instantáneo
+        plugins: { legend: { display: false }, tooltip: { enabled: false } }
       }
     });
 
-    if (canvasId === 'chartAM') chartAM = newChart;
+    if (canvasId === 'canvasAM') chartAM = newChart;
     else chartPM = newChart;
   }
 
@@ -246,18 +249,18 @@
     const moves = [];
     for (let i = data.length-1; i > 0; i--) {
       if (data[i].estado !== data[i-1].estado) moves.push(data[i]);
-      if (moves.length === 3) break;
+      if (moves.length === 4) break;
     }
     log.innerHTML = moves.map(m => `
       <div class="event-row">
-        <span><span class="dot" style="background:${m.estado==='available'?'var(--green)':'var(--red)'}"></span>${m.estado==='available'?'Punto Liberado':'Carga Iniciada'}</span>
-        <span style="color:var(--dim); font-weight:600">${new Date(m.creado_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+        <span><span class="dot" style="background:${m.estado==='available'?'#00f298':'#ff3e3e'}"></span>${m.estado==='available'?'Punto Liberado':'Carga Iniciada'}</span>
+        <span style="color:var(--dim); font-weight:700">${new Date(m.creado_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
       </div>
     `).join('');
   }
 
-  syncData();
-  setInterval(syncData, 30000);
+  updateDashboard();
+  setInterval(updateDashboard, 30000);
 </script>
 </body>
 </html>
