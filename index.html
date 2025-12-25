@@ -7,55 +7,66 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
-      --primary: #00d1b2;
-      --danger: #ff4757;
-      --bg: #f8fafc;
-      --card-bg: #ffffff;
-      --text-main: #1e293b;
-      --text-muted: #64748b;
+      --primary: #10b981;
+      --danger: #ef4444;
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --text: #0f172a;
+      --text-light: #64748b;
       --border: #e2e8f0;
     }
 
     @media (prefers-color-scheme: dark) {
       :root {
-        --bg: #0f172a;
-        --card-bg: #1e293b;
-        --text-main: #f1f5f9;
-        --text-muted: #94a3b8;
-        --border: #334155;
+        --bg: #020617;
+        --card: #0f172a;
+        --text: #f1f5f9;
+        --text-light: #94a3b8;
+        --border: #1e293b;
       }
     }
 
     body {
-      font-family: 'Inter', system-ui, -apple-system, sans-serif;
-      background-color: var(--bg);
-      color: var(--text-main);
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
       margin: 0;
-      padding: 2rem 1rem;
+      padding: 1.5rem;
       display: flex;
       justify-content: center;
     }
 
-    .dashboard {
+    .app-container {
       width: 100%;
-      max-width: 800px;
+      max-width: 600px;
     }
 
-    /* --- HERO SECTION --- */
-    .status-card {
-      background: var(--card-bg);
-      border-radius: 24px;
+    /* --- HEADER --- */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 2rem;
+    }
+
+    .header h1 { margin: 0; font-size: 1.5rem; font-weight: 800; }
+    .current-time { font-size: 0.85rem; color: var(--text-light); font-weight: 500; }
+
+    /* --- MAIN STATUS CARD --- */
+    .hero-card {
+      background: var(--card);
+      border-radius: 28px;
       padding: 2rem;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
       border: 1px solid var(--border);
-      position: relative;
-      overflow: hidden;
+      box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05);
+      text-align: center;
+      margin-bottom: 1.5rem;
     }
 
-    .badge-status {
+    .status-pill {
       display: inline-flex;
       align-items: center;
-      padding: 6px 12px;
+      padding: 0.5rem 1rem;
       border-radius: 99px;
       font-size: 0.75rem;
       font-weight: 700;
@@ -64,145 +75,127 @@
       margin-bottom: 1rem;
     }
 
-    .available .badge-status { background: #d1fae5; color: #065f46; }
-    .unavailable .badge-status { background: #fee2e2; color: #991b1b; }
+    .available .status-pill { background: #d1fae5; color: #065f46; }
+    .unavailable .status-pill { background: #fee2e2; color: #991b1b; }
 
-    .location-title {
-      font-size: 2rem;
-      font-weight: 800;
-      margin: 0;
-      letter-spacing: -0.02em;
+    .location-name { font-size: 1.75rem; font-weight: 800; margin: 0.5rem 0; letter-spacing: -0.03em; }
+    .time-in-state { font-size: 0.9rem; color: var(--text-light); }
+
+    /* --- GRID DE 24 HORAS --- */
+    .grid-container {
+      background: var(--card);
+      border-radius: 24px;
+      padding: 1.5rem;
+      border: 1px solid var(--border);
+      margin-bottom: 1.5rem;
     }
 
-    .live-indicator {
-      display: inline-block;
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--primary);
-      margin-right: 8px;
-      box-shadow: 0 0 0 0 rgba(0, 209, 178, 1);
-      animation: pulse 2s infinite;
+    .grid-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-light);
+      text-transform: uppercase;
+      margin-bottom: 1.25rem;
+      display: block;
     }
 
-    @keyframes pulse {
-      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 209, 178, 0.7); }
-      70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 209, 178, 0); }
-      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 209, 178, 0); }
-    }
-
-    /* --- STATS GRID --- */
-    .stats-grid {
+    .hour-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 1.5rem;
-      margin: 2rem 0;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 8px;
     }
 
-    .stat-item {
-      background: var(--card-bg);
-      padding: 1.25rem;
-      border-radius: 16px;
+    .hour-block {
+      height: 40px;
+      border-radius: 8px;
+      position: relative;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      overflow: hidden;
       border: 1px solid var(--border);
     }
 
-    .stat-label { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; }
-    .stat-value { font-size: 1.25rem; font-weight: 700; margin-top: 4px; display: block; }
-
-    /* --- TIMELINE (The "Masterpiece") --- */
-    .timeline-container {
-      margin-top: 2rem;
-    }
-
-    .timeline-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1rem;
-    }
-
-    .timeline-bar {
-      height: 48px;
+    .hour-fill {
       width: 100%;
-      background: var(--border);
-      border-radius: 12px;
-      display: flex;
-      overflow: hidden;
-      gap: 1px;
+      transition: height 0.5s ease;
     }
 
-    .timeline-segment {
-      height: 100%;
-      flex-grow: 1;
-      transition: transform 0.2s;
-      cursor: pointer;
-    }
+    .hour-fill.available { background: var(--primary); }
+    .hour-fill.occupied { background: var(--danger); }
 
-    .timeline-segment:hover { transform: scaleY(1.1); }
-    .seg-green { background: var(--primary); }
-    .seg-red { background: var(--danger); }
-    .seg-gray { background: #94a3b8; opacity: 0.3; }
-
-    .timeline-labels {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 0.75rem;
-      font-size: 0.7rem;
-      color: var(--text-muted);
+    .hour-number {
+      font-size: 0.65rem;
+      color: var(--text-light);
+      margin-top: 6px;
+      text-align: center;
       font-weight: 600;
     }
 
-    /* --- LOG LIST --- */
-    .history-section { margin-top: 2rem; }
-    .history-row {
+    /* --- EVENTOS RECIENTES --- */
+    .events-card {
+      background: var(--card);
+      border-radius: 24px;
+      padding: 1.5rem;
+      border: 1px solid var(--border);
+    }
+
+    .event-row {
       display: flex;
-      justify-content: space-between;
+      align-items: center;
       padding: 1rem 0;
       border-bottom: 1px solid var(--border);
-      font-size: 0.9rem;
     }
-    .history-row:last-child { border: none; }
-    .history-status { display: flex; align-items: center; font-weight: 600; }
-    .dot { width: 6px; height: 6px; border-radius: 50%; margin-right: 10px; }
+
+    .event-row:last-child { border: none; }
+
+    .event-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 1rem;
+      font-size: 1.2rem;
+    }
+
+    .event-info { flex-grow: 1; }
+    .event-title { font-size: 0.9rem; font-weight: 700; display: block; }
+    .event-time { font-size: 0.8rem; color: var(--text-light); }
+
   </style>
 </head>
 <body>
 
-<div class="dashboard">
-  <div id="main-content" class="status-card">
-    <div id="status-container">
-      <div class="badge-status">Cargando...</div>
-      <h1 class="location-title">Plaza del Pueblo, 1</h1>
-      <p id="timer-text" style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem;">Sincronizando con Qwello...</p>
+<div class="app-container">
+  <div class="header">
+    <div>
+      <span class="current-time" id="real-time">Cargando hora...</span>
+      <h1>Monitor Pro</h1>
     </div>
+    <div style="text-align: right">
+      <span class="status-pill" style="margin:0; background: var(--border); color: var(--text)">Plaza del Pueblo, 1</span>
+    </div>
+  </div>
 
-    <div class="stats-grid">
-      <div class="stat-item">
-        <span class="stat-label">Disponibilidad Hoy</span>
-        <span id="stat-percent" class="stat-value">--%</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">Estado actual</span>
-        <span id="stat-state" class="stat-value">--</span>
-      </div>
-    </div>
+  <div id="status-card" class="hero-card">
+    <div class="status-pill">Sincronizando...</div>
+    <div class="location-name">Plaza del Pueblo, 1</div>
+    <div class="time-in-state" id="duration">Calculando tiempo...</div>
+  </div>
 
-    <div class="timeline-container">
-      <div class="timeline-header">
-        <span class="stat-label">Actividad últimas 24h</span>
-        <span style="font-size: 0.7rem; color: var(--primary); font-weight: bold;">● Live</span>
+  <div class="grid-container">
+    <span class="grid-label">Disponibilidad (Últimas 24h)</span>
+    <div class="hour-grid" id="hour-grid">
       </div>
-      <div id="timeline-bar" class="timeline-bar"></div>
-      <div class="timeline-labels">
-        <span>Hace 24h</span>
-        <span>Ahora</span>
-      </div>
-    </div>
+  </div>
 
-    <div class="history-section">
-      <span class="stat-label">Eventos recientes</span>
-      <div id="event-log"></div>
-    </div>
+  <div class="events-card">
+    <span class="grid-label">Últimos Movimientos</span>
+    <div id="event-list">
+      </div>
   </div>
 </div>
 
@@ -211,7 +204,13 @@
   const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1teHFja2VraGZhcXJxZ2NhYnZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwMjczNzEsImV4cCI6MjA4MTYwMzM3MX0.gl7HYm_o-XC7yKqguusx1lM6ULZ_htuuvrKyvoBLQXU";
   const sbClient = window.supabase.createClient(SB_URL, SB_KEY);
 
-  async function updateDashboard() {
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('real-time').textContent = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+  }
+  setInterval(updateClock, 1000);
+
+  async function loadData() {
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { data, error } = await sbClient
       .from('lecturas')
@@ -220,79 +219,87 @@
       .gte('creado_at', oneDayAgo)
       .order('creado_at', { ascending: true });
 
-    if (error || !data.length) return;
-
-    const lastEntry = data[data.length - 1];
-    renderHero(lastEntry, data);
-    renderTimeline(data);
-    renderLog(data);
+    if (data) {
+      renderStatus(data);
+      renderGrid(data);
+      renderEvents(data);
+    }
   }
 
-  function renderHero(last, allData) {
-    const container = document.getElementById('main-content');
+  function renderStatus(data) {
+    const last = data[data.length - 1];
+    const card = document.getElementById('status-card');
     const isAvail = last.estado === 'available';
-    container.className = `status-card ${isAvail ? 'available' : 'unavailable'}`;
     
-    document.querySelector('.badge-status').textContent = isAvail ? 'Libre' : 'Ocupado';
-    document.getElementById('stat-state').textContent = isAvail ? 'Disponible' : 'En uso';
-    document.getElementById('stat-state').style.color = isAvail ? 'var(--primary)' : 'var(--danger)';
-
-    // Calcular % real de disponibilidad
-    const availCount = allData.filter(d => d.estado === 'available').length;
-    const percent = Math.round((availCount / allData.length) * 100);
-    document.getElementById('stat-percent').textContent = `${percent}%`;
+    card.className = `hero-card ${isAvail ? 'available' : 'unavailable'}`;
+    card.querySelector('.status-pill').textContent = isAvail ? '● Disponible' : '● Ocupado';
+    
+    // Cálculo de tiempo en el estado
+    let lastChangeIdx = data.length - 1;
+    for (let i = data.length - 1; i >= 0; i--) {
+      if (data[i].estado !== last.estado) { lastChangeIdx = i + 1; break; }
+    }
+    const diff = Math.floor((Date.now() - new Date(data[lastChangeIdx].creado_at)) / 60000);
+    document.getElementById('duration').textContent = `En este estado desde hace ${diff} min`;
   }
 
-  function renderTimeline(logs) {
-    const bar = document.getElementById('timeline-bar');
-    bar.innerHTML = '';
+  function renderGrid(data) {
+    const grid = document.getElementById('hour-grid');
+    grid.innerHTML = '';
     
-    // Dividimos las 24h en 100 segmentos visuales
-    const segments = 100;
-    const startTime = new Date(Date.now() - 24 * 60 * 60 * 1000).getTime();
-    const endTime = Date.now();
-    const step = (endTime - startTime) / segments;
+    // Agrupar por horas
+    const hourlyStats = Array(24).fill(0).map((_, i) => ({ hour: i, available: 0, total: 0 }));
+    
+    data.forEach(d => {
+      const h = new Date(d.creado_at).getHours();
+      hourlyStats[h].total++;
+      if (d.estado === 'available') hourlyStats[h].available++;
+    });
 
-    for(let i=0; i<segments; i++) {
-      const currentStepTime = startTime + (i * step);
-      const entry = logs.find(l => new Date(l.creado_at).getTime() >= currentStepTime);
+    // Ordenar para que la última hora sea la actual
+    const currentHour = new Date().getHours();
+    for (let i = 0; i < 24; i++) {
+      const hIdx = (currentHour + 1 + i) % 24;
+      const stat = hourlyStats[hIdx];
+      const percentage = stat.total > 0 ? (stat.available / stat.total) * 100 : 0;
       
-      const seg = document.createElement('div');
-      seg.className = 'timeline-segment';
-      if (!entry) seg.classList.add('seg-gray');
-      else seg.classList.add(entry.estado === 'available' ? 'seg-green' : 'seg-red');
-      
-      bar.appendChild(seg);
+      const container = document.createElement('div');
+      container.innerHTML = `
+        <div class="hour-block">
+          <div class="hour-fill ${percentage > 50 ? 'available' : 'occupied'}" style="height: ${percentage || 10}%"></div>
+        </div>
+        <div class="hour-number">${hIdx}h</div>
+      `;
+      grid.appendChild(container);
     }
   }
 
-  function renderLog(logs) {
-    const logContainer = document.getElementById('event-log');
+  function renderEvents(data) {
+    const list = document.getElementById('event-list');
     const events = [];
-    for (let i = logs.length - 1; i > 0; i--) {
-      if (logs[i].estado !== logs[i-1].estado) {
-        events.push({
-          time: new Date(logs[i].creado_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
-          status: logs[i].estado,
-          label: logs[i].estado === 'available' ? 'Punto Liberado' : 'Carga Iniciada'
-        });
+    for (let i = data.length - 1; i > 0; i--) {
+      if (data[i].estado !== data[i-1].estado) {
+        events.push(data[i]);
       }
-      if (events.length === 4) break;
+      if (events.length === 3) break;
     }
 
-    logContainer.innerHTML = events.map(e => `
-      <div class="history-row">
-        <span class="history-status">
-          <span class="dot" style="background:${e.status === 'available' ? 'var(--primary)' : 'var(--danger)'}"></span>
-          ${e.label}
-        </span>
-        <span style="color: var(--text-muted); font-weight: 500;">${e.time}</span>
+    list.innerHTML = events.map(e => `
+      <div class="event-row">
+        <div class="event-icon" style="background: ${e.estado === 'available' ? '#d1fae5' : '#fee2e2'}">
+          ${e.estado === 'available' ? '✅' : '🔌'}
+        </div>
+        <div class="event-info">
+          <span class="event-title">${e.estado === 'available' ? 'Cargador Libre' : 'Carga Iniciada'}</span>
+          <span class="event-time">${new Date(e.creado_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+        </div>
       </div>
     `).join('');
   }
 
-  updateDashboard();
-  setInterval(updateDashboard, 30000); // Actualiza cada 30s
+  loadData();
+  setInterval(loadData, 30000);
 </script>
+
 </body>
 </html>
