@@ -2,8 +2,8 @@ name: Qwello Auto Monitor
 
 on:
   schedule:
-    # Se ejecuta cada 15 minutos automáticamente
-    - cron: '*/15 * * * *'
+    # Se ejecuta cada minuto automáticamente
+    - cron: '* * * * *'
   # Permite ejecutarlo a mano desde la pestaña Actions
   workflow_dispatch:
 
