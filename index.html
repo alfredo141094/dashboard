@@ -2,225 +2,297 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Monitor Qwello Pro - Precisión</title>
+  <title>Qwello Pro | Plaza del Pueblo</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    :root { 
-      --bg: #f0f2f5; --card: #ffffff; --text: #1c1e21; 
-      --success: #00b894; --danger: #d63031; --gray: #e0e0e0; 
+    :root {
+      --primary: #00d1b2;
+      --danger: #ff4757;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
     }
-    @media (prefers-color-scheme: dark) { 
-      :root { --bg: #121212; --card: #1e1e1e; --text: #e4e6eb; --gray: #333; } 
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f172a;
+        --card-bg: #1e293b;
+        --text-main: #f1f5f9;
+        --text-muted: #94a3b8;
+        --border: #334155;
+      }
     }
-    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 1rem; display: flex; flex-direction: column; align-items: center; }
-    h1 { margin: 1.5rem 0; font-size: 1.8rem; text-align: center; }
-    #chargers-container { width: 100%; max-width: 650px; display: flex; flex-direction: column; gap: 1.5rem; }
-    .charger-card { background: var(--card); padding: 1.5rem; border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-top: 8px solid #ccc; }
-    .charger-card.available { border-top-color: var(--success); }
-    .charger-card.unavailable { border-top-color: var(--danger); }
-    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; }
-    .location-name { font-size: 1.1rem; font-weight: bold; }
-    .status-timer { font-size: 0.85rem; opacity: 0.7; margin-top: 2px; }
-    .stats-badge { font-size: 0.75rem; font-weight: bold; padding: 4px 10px; border-radius: 8px; background: rgba(0,0,0,0.05); margin-top: 8px; display: inline-block; }
-    .status-badge-main { padding: 0.4rem 0.8rem; border-radius: 50px; font-size: 0.75rem; font-weight: bold; }
-    .available .status-badge-main { background: #e6fffa; color: #008767; }
-    .unavailable .status-badge-main { background: #fff5f5; color: #a02020; }
-    .chart-box { height: 140px; margin-top: 1rem; }
-    .history-list { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(0,0,0,0.1); font-size: 0.8rem; }
-    .history-item { display: flex; justify-content: space-between; margin-bottom: 4px; opacity: 0.8; }
-    .history-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
-    footer { margin-top: 3rem; font-size: 0.8rem; opacity: 0.6; text-align: center; }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: var(--bg);
+      color: var(--text-main);
+      margin: 0;
+      padding: 2rem 1rem;
+      display: flex;
+      justify-content: center;
+    }
+
+    .dashboard {
+      width: 100%;
+      max-width: 800px;
+    }
+
+    /* --- HERO SECTION --- */
+    .status-card {
+      background: var(--card-bg);
+      border-radius: 24px;
+      padding: 2rem;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+      border: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .badge-status {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 12px;
+      border-radius: 99px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 1rem;
+    }
+
+    .available .badge-status { background: #d1fae5; color: #065f46; }
+    .unavailable .badge-status { background: #fee2e2; color: #991b1b; }
+
+    .location-title {
+      font-size: 2rem;
+      font-weight: 800;
+      margin: 0;
+      letter-spacing: -0.02em;
+    }
+
+    .live-indicator {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--primary);
+      margin-right: 8px;
+      box-shadow: 0 0 0 0 rgba(0, 209, 178, 1);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 209, 178, 0.7); }
+      70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 209, 178, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 209, 178, 0); }
+    }
+
+    /* --- STATS GRID --- */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1.5rem;
+      margin: 2rem 0;
+    }
+
+    .stat-item {
+      background: var(--card-bg);
+      padding: 1.25rem;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+    }
+
+    .stat-label { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; }
+    .stat-value { font-size: 1.25rem; font-weight: 700; margin-top: 4px; display: block; }
+
+    /* --- TIMELINE (The "Masterpiece") --- */
+    .timeline-container {
+      margin-top: 2rem;
+    }
+
+    .timeline-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .timeline-bar {
+      height: 48px;
+      width: 100%;
+      background: var(--border);
+      border-radius: 12px;
+      display: flex;
+      overflow: hidden;
+      gap: 1px;
+    }
+
+    .timeline-segment {
+      height: 100%;
+      flex-grow: 1;
+      transition: transform 0.2s;
+      cursor: pointer;
+    }
+
+    .timeline-segment:hover { transform: scaleY(1.1); }
+    .seg-green { background: var(--primary); }
+    .seg-red { background: var(--danger); }
+    .seg-gray { background: #94a3b8; opacity: 0.3; }
+
+    .timeline-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 0.75rem;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    /* --- LOG LIST --- */
+    .history-section { margin-top: 2rem; }
+    .history-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 1rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.9rem;
+    }
+    .history-row:last-child { border: none; }
+    .history-status { display: flex; align-items: center; font-weight: 600; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; margin-right: 10px; }
   </style>
 </head>
 <body>
 
-  <h1>🔌 Monitor Qwello Pro</h1>
-  <div id="chargers-container">
-    <p id="msg" style="text-align: center; padding: 2rem;">Sincronizando datos...</p>
+<div class="dashboard">
+  <div id="main-content" class="status-card">
+    <div id="status-container">
+      <div class="badge-status">Cargando...</div>
+      <h1 class="location-title">Plaza del Pueblo, 1</h1>
+      <p id="timer-text" style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem;">Sincronizando con Qwello...</p>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-item">
+        <span class="stat-label">Disponibilidad Hoy</span>
+        <span id="stat-percent" class="stat-value">--%</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Estado actual</span>
+        <span id="stat-state" class="stat-value">--</span>
+      </div>
+    </div>
+
+    <div class="timeline-container">
+      <div class="timeline-header">
+        <span class="stat-label">Actividad últimas 24h</span>
+        <span style="font-size: 0.7rem; color: var(--primary); font-weight: bold;">● Live</span>
+      </div>
+      <div id="timeline-bar" class="timeline-bar"></div>
+      <div class="timeline-labels">
+        <span>Hace 24h</span>
+        <span>Ahora</span>
+      </div>
+    </div>
+
+    <div class="history-section">
+      <span class="stat-label">Eventos recientes</span>
+      <div id="event-log"></div>
+    </div>
   </div>
+</div>
 
-  <script>
-    const SB_URL = "https://mmxqckekhfaqrqgcabvh.supabase.co";
-    const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1teHFja2VraGZhcXJxZ2NhYnZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwMjczNzEsImV4cCI6MjA4MTYwMzM3MX0.gl7HYm_o-XC7yKqguusx1lM6ULZ_htuuvrKyvoBLQXU";
-    const sbClient = window.supabase.createClient(SB_URL, SB_KEY);
-    const charts = {};
+<script>
+  const SB_URL = "https://mmxqckekhfaqrqgcabvh.supabase.co";
+  const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1teHFja2VraGZhcXJxZ2NhYnZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwMjczNzEsImV4cCI6MjA4MTYwMzM3MX0.gl7HYm_o-XC7yKqguusx1lM6ULZ_htuuvrKyvoBLQXU";
+  const sbClient = window.supabase.createClient(SB_URL, SB_KEY);
 
-    // Mapeo de nombres corregido
-    const CHARGER_NAMES = {
-      pueblo: "Plaza del Pueblo, 1",
-      bruselas: "Avenida de Bruselas, 19"
-    };
+  async function updateDashboard() {
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { data, error } = await sbClient
+      .from('lecturas')
+      .select('*')
+      .eq('cargador_id', 'pueblo')
+      .gte('creado_at', oneDayAgo)
+      .order('creado_at', { ascending: true });
 
-    async function loadData() {
-      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      const { data, error } = await sbClient
-        .from('lecturas') 
-        .select('*')
-        .gte('creado_at', oneDayAgo)
-        .order('creado_at', { ascending: true });
+    if (error || !data.length) return;
 
-      if (error) return console.error(error);
-      if (data && data.length > 0) {
-        document.getElementById('msg').style.display = 'none';
-        renderDashboard(data);
-      }
-    }
+    const lastEntry = data[data.length - 1];
+    renderHero(lastEntry, data);
+    renderTimeline(data);
+    renderLog(data);
+  }
 
-    function processPrecisionData(logs) {
-      const hourlyData = Array(24).fill(null).map(() => ({ green: 0, red: 0, gray: 60 }));
-      if (logs.length < 2) return hourlyData;
+  function renderHero(last, allData) {
+    const container = document.getElementById('main-content');
+    const isAvail = last.estado === 'available';
+    container.className = `status-card ${isAvail ? 'available' : 'unavailable'}`;
+    
+    document.querySelector('.badge-status').textContent = isAvail ? 'Libre' : 'Ocupado';
+    document.getElementById('stat-state').textContent = isAvail ? 'Disponible' : 'En uso';
+    document.getElementById('stat-state').style.color = isAvail ? 'var(--primary)' : 'var(--danger)';
 
-      for (let i = 0; i < logs.length - 1; i++) {
-        const start = new Date(logs[i].creado_at);
-        const end = new Date(logs[i+1].creado_at);
-        const state = logs[i].estado;
-        let cursor = new Date(start);
+    // Calcular % real de disponibilidad
+    const availCount = allData.filter(d => d.estado === 'available').length;
+    const percent = Math.round((availCount / allData.length) * 100);
+    document.getElementById('stat-percent').textContent = `${percent}%`;
+  }
 
-        while (cursor < end) {
-          const currentHour = cursor.getHours();
-          const nextHourBoundary = new Date(cursor);
-          nextHourBoundary.setHours(currentHour + 1, 0, 0, 0);
-          const limit = end < nextHourBoundary ? end : nextHourBoundary;
-          const durationMins = (limit - cursor) / 60000;
+  function renderTimeline(logs) {
+    const bar = document.getElementById('timeline-bar');
+    bar.innerHTML = '';
+    
+    // Dividimos las 24h en 100 segmentos visuales
+    const segments = 100;
+    const startTime = new Date(Date.now() - 24 * 60 * 60 * 1000).getTime();
+    const endTime = Date.now();
+    const step = (endTime - startTime) / segments;
 
-          if (state === 'available') hourlyData[currentHour].green += durationMins;
-          else hourlyData[currentHour].red += durationMins;
-          
-          hourlyData[currentHour].gray = Math.max(0, 60 - (hourlyData[currentHour].green + hourlyData[currentHour].red));
-          cursor = limit;
-        }
-      }
-      return hourlyData;
-    }
-
-    function calculateStats(logs) {
-      if (logs.length === 0) return { percent: 0, duration: '...', events: [] };
-      const todayStart = new Date().setHours(0,0,0,0);
-      const logsToday = logs.filter(l => new Date(l.creado_at) >= todayStart);
-      const availableToday = logsToday.filter(l => l.estado === 'available').length;
-      const percent = logsToday.length > 0 ? Math.round((availableToday / logsToday.length) * 100) : 0;
-
-      const currentStatus = logs[logs.length - 1].estado;
-      let lastChangeIdx = logs.length - 1;
-      for (let i = logs.length - 1; i >= 0; i--) {
-        if (logs[i].estado !== currentStatus) { lastChangeIdx = i + 1; break; }
-        if (i === 0) lastChangeIdx = 0;
-      }
-      const diffMs = Date.now() - new Date(logs[lastChangeIdx].creado_at);
-      const mins = Math.floor(diffMs / 60000);
-      const duration = mins >= 60 ? `${Math.floor(mins/60)}h ${mins%60}m` : `${mins} min`;
-
-      const events = [];
-      for (let i = logs.length - 1; i > 0; i--) {
-        if (logs[i].estado !== logs[i-1].estado) {
-          events.push({
-            time: new Date(logs[i].creado_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
-            status: logs[i].estado,
-            text: logs[i].estado === 'available' ? 'Se liberó' : 'Se ocupó'
-          });
-        }
-        if (events.length === 3) break;
-      }
-      return { percent, duration, events };
-    }
-
-    function renderDashboard(data) {
-      const container = document.getElementById('chargers-container');
-      Object.keys(CHARGER_NAMES).forEach(id => {
-        const logs = data.filter(l => l.cargador_id === id);
-        const lastEntry = logs[logs.length - 1] || { estado: 'unavailable' };
-        const stats = calculateStats(logs);
-        
-        let card = document.getElementById(`card-${id}`);
-        if (!card) {
-          card = document.createElement('div');
-          card.id = `card-${id}`;
-          card.className = `charger-card ${lastEntry.estado}`;
-          card.innerHTML = `
-            <div class="header">
-              <div class="location-info">
-                <span class="location-name">${CHARGER_NAMES[id]}</span>
-                <span class="status-timer">🕒 ...</span>
-                <span class="stats-badge">📊 Hoy disponible: ...</span>
-              </div>
-              <span class="status-badge-main">...</span>
-            </div>
-            <div class="chart-box"><canvas id="chart-${id}"></canvas></div>
-            <div class="history-list"></div>
-          `;
-          container.appendChild(card);
-        }
-
-        card.className = `charger-card ${lastEntry.estado}`;
-        card.querySelector('.status-timer').textContent = `🕒 En este estado hace ${stats.duration}`;
-        card.querySelector('.stats-badge').textContent = `📊 Hoy disponible: ${stats.percent}%`;
-        card.querySelector('.status-badge-main').textContent = lastEntry.estado === 'available' ? 'LIBRE ✅' : 'OCUPADO ❌';
-        
-        const historyBox = card.querySelector('.history-list');
-        historyBox.innerHTML = `<strong>Últimos movimientos:</strong>` + 
-          (stats.events.map(e => `
-            <div class="history-item">
-              <span><span class="history-dot" style="background:${e.status === 'available' ? '#00b894' : '#d63031'}"></span>${e.text}</span>
-              <span>${e.time}</span>
-            </div>
-          `).join('') || '<div style="opacity:0.5; margin-top:5px;">Sin cambios recientes</div>');
-
-        updateChart(id, logs);
-      });
-    }
-
-    function updateChart(id, logs) {
-      const stats = processPrecisionData(logs);
-      const canvas = document.getElementById(`chart-${id}`);
-      if (!canvas) return;
+    for(let i=0; i<segments; i++) {
+      const currentStepTime = startTime + (i * step);
+      const entry = logs.find(l => new Date(l.creado_at).getTime() >= currentStepTime);
       
-      const ctx = canvas.getContext('2d');
-      const dataSets = {
-        labels: Array.from({length: 24}, (_, i) => `${i}h`),
-        datasets: [
-          { label: 'Libre', data: stats.map(s => s.green), backgroundColor: '#00b894', stack: 'A' },
-          { label: 'Ocupado', data: stats.map(s => s.red), backgroundColor: '#d63031', stack: 'A' },
-          { label: 'Sin datos', data: stats.map(s => s.gray), backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--gray'), stack: 'A' }
-        ]
-      };
+      const seg = document.createElement('div');
+      seg.className = 'timeline-segment';
+      if (!entry) seg.classList.add('seg-gray');
+      else seg.classList.add(entry.estado === 'available' ? 'seg-green' : 'seg-red');
+      
+      bar.appendChild(seg);
+    }
+  }
 
-      if (charts[id]) {
-        charts[id].data = dataSets;
-        charts[id].update('none');
-      } else {
-        charts[id] = new Chart(ctx, {
-          type: 'bar',
-          data: dataSets,
-          options: {
-            responsive: true, maintainAspectRatio: false,
-            scales: { 
-              y: { stacked: true, max: 60, display: false }, 
-              x: { stacked: true, grid: { display: false }, ticks: { font: {size: 9} } } 
-            },
-            plugins: { 
-              legend: { display: false },
-              tooltip: {
-                callbacks: {
-                  label: function(context) {
-                    let label = context.dataset.label || '';
-                    if (label) label += ': ';
-                    if (context.parsed.y !== null) {
-                      label += Math.round(context.parsed.y) + ' min'; // Redondeo en la gráfica
-                    }
-                    return label;
-                  }
-                }
-              }
-            }
-          }
+  function renderLog(logs) {
+    const logContainer = document.getElementById('event-log');
+    const events = [];
+    for (let i = logs.length - 1; i > 0; i--) {
+      if (logs[i].estado !== logs[i-1].estado) {
+        events.push({
+          time: new Date(logs[i].creado_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+          status: logs[i].estado,
+          label: logs[i].estado === 'available' ? 'Punto Liberado' : 'Carga Iniciada'
         });
       }
+      if (events.length === 4) break;
     }
 
-    loadData();
-    setInterval(loadData, 30000);
-  </script>
+    logContainer.innerHTML = events.map(e => `
+      <div class="history-row">
+        <span class="history-status">
+          <span class="dot" style="background:${e.status === 'available' ? 'var(--primary)' : 'var(--danger)'}"></span>
+          ${e.label}
+        </span>
+        <span style="color: var(--text-muted); font-weight: 500;">${e.time}</span>
+      </div>
+    `).join('');
+  }
+
+  updateDashboard();
+  setInterval(updateDashboard, 30000); // Actualiza cada 30s
+</script>
 </body>
 </html>
