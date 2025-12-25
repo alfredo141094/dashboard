@@ -2,19 +2,18 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Qwello Pro | Chrono 12h</title>
+  <title>Qwello Pro | Dual Chrono</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
-      --bg: #05070a;
-      --card: #111418;
-      --green: #00ff95;
-      --red: #ff3b3b;
+      --bg: #0a0e14;
+      --card: #161b22;
+      --green: #00f298;
+      --red: #ff3e3e;
       --text: #ffffff;
-      --text-dim: #666e7a;
-      --accent: #1a1f26;
+      --dim: #8b949e;
     }
 
     body {
@@ -22,235 +21,226 @@
       background: var(--bg);
       color: var(--text);
       margin: 0;
+      padding: 2rem 1rem;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 3rem 1rem;
     }
 
-    /* --- HEADER PRO --- */
-    .status-header {
-      text-align: center;
-      margin-bottom: 2.5rem;
+    .header-status { text-align: center; margin-bottom: 2rem; }
+    .main-title { font-size: 3rem; font-weight: 900; letter-spacing: -2px; margin: 0; }
+    .is-free { color: var(--green); text-shadow: 0 0 20px rgba(0,242,152,0.3); }
+    .is-busy { color: var(--red); text-shadow: 0 0 20px rgba(255,62,62,0.3); }
+
+    /* --- LAYOUT DUAL CLOCK --- */
+    .clocks-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2rem;
+      justify-content: center;
+      width: 100%;
+      max-width: 900px;
+      margin-bottom: 2rem;
     }
 
-    .location-tag {
-      font-size: 0.7rem;
-      font-weight: 800;
-      letter-spacing: 0.2em;
-      color: var(--text-dim);
-      text-transform: uppercase;
-      margin-bottom: 0.5rem;
-      display: block;
-    }
-
-    .main-status {
-      font-size: 4rem;
-      font-weight: 900;
-      margin: 0;
-      line-height: 0.9;
-      letter-spacing: -3px;
-    }
-
-    .is-free { color: var(--green); text-shadow: 0 0 30px rgba(0, 255, 149, 0.3); }
-    .is-busy { color: var(--red); text-shadow: 0 0 30px rgba(255, 59, 59, 0.3); }
-
-    /* --- CHRONO CLOCK --- */
-    .chrono-wrapper {
+    .clock-box {
       position: relative;
       width: 320px;
       height: 320px;
-      margin-bottom: 3rem;
+      background: var(--card);
+      border-radius: 50%;
+      padding: 10px;
+      border: 1px solid #30363d;
     }
 
-    .chrono-center {
+    .clock-label {
+      position: absolute;
+      width: 100%;
+      text-align: center;
+      top: -30px;
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: var(--dim);
+      text-transform: uppercase;
+    }
+
+    .center-info {
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
       text-align: center;
-      z-index: 10;
     }
 
-    .time-now {
-      font-size: 2.2rem;
-      font-weight: 800;
-      font-variant-numeric: tabular-nums;
-      margin-bottom: -5px;
-    }
-
-    .time-label {
-      font-size: 0.65rem;
+    .digital-now { font-size: 1.5rem; font-weight: 800; font-family: monospace; }
+    
+    /* Marcas horarias fijas */
+    .hour-mark {
+      position: absolute;
+      font-size: 0.7rem;
       font-weight: 700;
-      color: var(--text-dim);
-      letter-spacing: 1px;
+      color: var(--dim);
     }
+    .h12 { top: 15px; left: 50%; transform: translateX(-50%); }
+    .h3 { right: 15px; top: 50%; transform: translateY(-50%); }
+    .h6 { bottom: 15px; left: 50%; transform: translateX(-50%); }
+    .h9 { left: 15px; top: 50%; transform: translateY(-50%); }
 
-    /* --- EVENT LIST --- */
-    .events-box {
+    /* --- EVENTS --- */
+    .events-panel {
       width: 100%;
-      max-width: 360px;
+      max-width: 450px;
       background: var(--card);
-      border-radius: 24px;
+      border-radius: 20px;
       padding: 1.5rem;
-      border: 1px solid var(--accent);
+      border: 1px solid #30363d;
     }
 
-    .event-row {
+    .event-item {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      padding: 0.75rem 0;
-      border-bottom: 1px solid var(--accent);
-    }
-
-    .event-row:last-child { border: none; }
-
-    .status-indicator {
-      display: flex;
-      align-items: center;
-      font-weight: 700;
+      padding: 10px 0;
+      border-bottom: 1px solid #30363d;
       font-size: 0.9rem;
     }
-
-    .dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      margin-right: 12px;
-    }
-
-    .timestamp {
-      color: var(--text-dim);
-      font-size: 0.85rem;
-      font-weight: 600;
-    }
+    .event-dot { width: 8px; height: 8px; border-radius: 50%; margin-right: 10px; display: inline-block; }
   </style>
 </head>
 <body>
 
-  <div class="status-header">
-    <span class="location-tag">Plaza del Pueblo, 1</span>
-    <h1 id="status-title" class="main-status is-free">...</h1>
+  <div class="header-status">
+    <span style="color:var(--dim); font-weight:700">PLAZA DEL PUEBLO, 1</span>
+    <h1 id="status-txt" class="main-title">...</h1>
   </div>
 
-  <div class="chrono-wrapper">
-    <canvas id="chronoCanvas"></canvas>
-    <div class="chrono-center">
-      <div class="time-now" id="digital-clock">00:00</div>
-      <div class="time-label">HISTORIAL 12H</div>
+  <div class="clocks-container">
+    <div class="clock-box">
+      <span class="clock-label">Detalle 12 Horas (AM/PM)</span>
+      <span class="hour-mark h12">12</span>
+      <span class="hour-mark h3">3</span>
+      <span class="hour-mark h6">6</span>
+      <span class="hour-mark h9">9</span>
+      <canvas id="chart12"></canvas>
+      <div class="center-info">
+        <div class="digital-now" id="time12">00:00</div>
+        <div style="font-size:0.6rem; color:var(--dim)">AHORA</div>
+      </div>
+    </div>
+
+    <div class="clock-box">
+      <span class="clock-label">Vista Global 24 Horas</span>
+      <span class="hour-mark h12">00</span>
+      <span class="hour-mark h3">06</span>
+      <span class="hour-mark h6">12</span>
+      <span class="hour-mark h9">18</span>
+      <canvas id="chart24"></canvas>
+      <div class="center-info">
+        <div class="digital-now">24H</div>
+        <div style="font-size:0.6rem; color:var(--dim)">HISTORIAL</div>
+      </div>
     </div>
   </div>
 
-  <div class="events-box">
-    <div id="event-list">
-      </div>
+  <div class="events-panel">
+    <span style="font-size:0.7rem; font-weight:800; color:var(--dim)">MOVIMIENTOS RECIENTES</span>
+    <div id="event-log"></div>
   </div>
 
 <script>
   const SB_URL = "https://mmxqckekhfaqrqgcabvh.supabase.co";
   const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1teHFja2VraGZhcXJxZ2NhYnZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwMjczNzEsImV4cCI6MjA4MTYwMzM3MX0.gl7HYm_o-XC7yKqguusx1lM6ULZ_htuuvrKyvoBLQXU";
   const sbClient = window.supabase.createClient(SB_URL, SB_KEY);
-  let myChart;
+  
+  let chart12, chart24;
 
-  function updateDigitalClock() {
+  async function updateAll() {
     const now = new Date();
-    document.getElementById('digital-clock').textContent = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-  }
-  setInterval(updateDigitalClock, 1000);
+    document.getElementById('time12').textContent = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
 
-  async function fetchData() {
-    // Pedimos las últimas 12 horas
-    const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
-    const { data, error } = await sbClient
+    const { data } = await sbClient
       .from('lecturas')
       .select('*')
       .eq('cargador_id', 'pueblo')
-      .gte('creado_at', twelveHoursAgo)
+      .gte('creado_at', new Date(Date.now() - 24*60*60*1000).toISOString())
       .order('creado_at', { ascending: true });
 
-    if (data) processUI(data);
+    if (data) {
+      renderStatus(data[data.length-1]);
+      renderClock(data, 12, 'chart12');
+      renderClock(data, 24, 'chart24');
+      renderEvents(data);
+    }
   }
 
-  function processUI(data) {
-    const last = data[data.length - 1];
-    const isFree = last.estado === 'available';
-    
-    // 1. Estado principal
-    const title = document.getElementById('status-title');
-    title.textContent = isFree ? 'LIBRE' : 'OCUPADO';
-    title.className = `main-status ${isFree ? 'is-free' : 'is-busy'}`;
+  function renderStatus(last) {
+    const el = document.getElementById('status-txt');
+    const free = last.estado === 'available';
+    el.textContent = free ? 'LIBRE' : 'OCUPADO';
+    el.className = `main-title ${free ? 'is-free' : 'is-busy'}`;
+  }
 
-    // 2. Procesar Reloj de 12 Horas
-    // Creamos 12 bloques (uno por hora)
-    const hourlyStates = Array(12).fill('available');
-    const now = new Date();
+  function renderClock(data, hours, canvasId) {
+    const segments = hours * 4; // 15 min por segmento para precisión
+    const states = Array(segments).fill('#1a1f26'); // Fondo vacío
     
     data.forEach(d => {
-      const entryHour = new Date(d.creado_at).getHours();
-      const clockHour = entryHour % 12 || 12; // Convertir 0-23 a 1-12
-      // Si hay un solo registro de ocupado en esa hora, la marcamos como ocupada
-      if (d.estado !== 'available') hourlyStates[clockHour - 1] = 'occupied';
+      const date = new Date(d.creado_at);
+      const h = date.getHours();
+      const m = date.getMinutes();
+      
+      let idx;
+      if (hours === 12) {
+        idx = ((h % 12) * 4) + Math.floor(m / 15);
+      } else {
+        idx = (h * 4) + Math.floor(m / 15);
+      }
+      states[idx] = d.estado === 'available' ? '#00f298' : '#ff3e3e';
     });
 
-    renderChrono(hourlyStates);
-    renderList(data);
-  }
-
-  function renderChrono(states) {
-    const ctx = document.getElementById('chronoCanvas').getContext('2d');
-    
-    // El orden de Chart.js empieza a las 3 en punto, rotamos para empezar a las 12
-    const backgroundColors = states.map(s => s === 'available' ? '#00ff95' : '#ff3b3b');
-
-    if (myChart) myChart.destroy();
-
-    myChart = new Chart(ctx, {
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    const config = {
       type: 'doughnut',
       data: {
         datasets: [{
-          data: Array(12).fill(1), // 12 segmentos iguales
-          backgroundColor: backgroundColors,
-          borderWidth: 4,
-          borderColor: '#05070a', // Color del fondo para separar segmentos
-          hoverOffset: 0
+          data: Array(segments).fill(1),
+          backgroundColor: states,
+          borderWidth: 2,
+          borderColor: '#0a0e14'
         }]
       },
       options: {
-        rotation: -15, // Alinea el primer segmento a las 12 en punto
-        cutout: '88%',
-        plugins: {
-          legend: { display: false },
-          tooltip: { enabled: false }
-        }
+        rotation: -90, // El 12 arriba
+        cutout: '80%',
+        plugins: { legend: {display:false}, tooltip: {enabled:false} }
       }
-    });
-  }
+    };
 
-  function renderList(data) {
-    const list = document.getElementById('event-list');
-    const movements = [];
-    // Buscamos los últimos 3 cambios reales de estado
-    for (let i = data.length - 1; i > 0; i--) {
-      if (data[i].estado !== data[i-1].estado) {
-        movements.push(data[i]);
-      }
-      if (movements.length === 3) break;
+    if (canvasId === 'chart12') {
+      if (chart12) chart12.destroy();
+      chart12 = new Chart(ctx, config);
+    } else {
+      if (chart24) chart24.destroy();
+      chart24 = new Chart(ctx, config);
     }
-
-    list.innerHTML = movements.map(m => `
-      <div class="event-row">
-        <div class="status-indicator">
-          <div class="dot" style="background: ${m.estado === 'available' ? 'var(--green)' : 'var(--red)'}"></div>
-          ${m.estado === 'available' ? 'Punto Liberado' : 'Carga Iniciada'}
-        </div>
-        <div class="timestamp">${new Date(m.creado_at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</div>
-      </div>
-    `).join('') || '<div class="timestamp" style="text-align:center">Sin cambios en las últimas 12h</div>';
   }
 
-  fetchData();
-  setInterval(fetchData, 30000); // Sincroniza cada 30 segundos
+  function renderEvents(data) {
+    const log = document.getElementById('event-log');
+    const moves = [];
+    for (let i = data.length-1; i > 0; i--) {
+      if (data[i].estado !== data[i-1].estado) moves.push(data[i]);
+      if (moves.length === 3) break;
+    }
+    log.innerHTML = moves.map(m => `
+      <div class="event-item">
+        <span><span class="event-dot" style="background:${m.estado==='available'?'#00f298':'#ff3e3e'}"></span>${m.estado==='available'?'Se liberó':'Se ocupó'}</span>
+        <span style="color:var(--dim)">${new Date(m.creado_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+      </div>
+    `).join('');
+  }
+
+  updateAll();
+  setInterval(updateAll, 30000);
 </script>
 </body>
 </html>
