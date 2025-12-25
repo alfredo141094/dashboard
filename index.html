@@ -2,215 +2,152 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Qwello Pro | Plaza del Pueblo</title>
+  <title>Qwello Pro | Reloj de Precisión</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
-      --primary: #10b981;
-      --danger: #ef4444;
-      --bg: #f1f5f9;
-      --card: #ffffff;
-      --text: #0f172a;
-      --text-light: #64748b;
-      --border: #e2e8f0;
-    }
-
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #020617;
-        --card: #0f172a;
-        --text: #f1f5f9;
-        --text-light: #94a3b8;
-        --border: #1e293b;
-      }
+      --primary: #00f298; /* Verde Neón Pro */
+      --danger: #ff3e3e;  /* Rojo Alerta */
+      --bg: #0a0e14;      /* Negro Profundo */
+      --card: #161b22;
+      --text: #ffffff;
+      --text-dim: #8b949e;
     }
 
     body {
-      font-family: 'Inter', -apple-system, sans-serif;
+      font-family: 'Segoe UI', system-ui, sans-serif;
       background: var(--bg);
       color: var(--text);
       margin: 0;
-      padding: 1.5rem;
       display: flex;
-      justify-content: center;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
     }
 
-    .app-container {
-      width: 100%;
-      max-width: 600px;
-    }
-
-    /* --- HEADER --- */
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
+    /* --- ESTADO ACTUAL (HERO) --- */
+    .status-header {
+      text-align: center;
       margin-bottom: 2rem;
     }
 
-    .header h1 { margin: 0; font-size: 1.5rem; font-weight: 800; }
-    .current-time { font-size: 0.85rem; color: var(--text-light); font-weight: 500; }
-
-    /* --- MAIN STATUS CARD --- */
-    .hero-card {
-      background: var(--card);
-      border-radius: 28px;
-      padding: 2rem;
-      border: 1px solid var(--border);
-      box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05);
-      text-align: center;
-      margin-bottom: 1.5rem;
-    }
-
-    .status-pill {
-      display: inline-flex;
-      align-items: center;
-      padding: 0.5rem 1rem;
-      border-radius: 99px;
-      font-size: 0.75rem;
-      font-weight: 700;
+    .main-badge {
+      font-size: 3rem;
+      font-weight: 900;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 1rem;
+      letter-spacing: -2px;
+      margin: 0;
+      line-height: 1;
     }
 
-    .available .status-pill { background: #d1fae5; color: #065f46; }
-    .unavailable .status-pill { background: #fee2e2; color: #991b1b; }
+    .status-available { color: var(--primary); text-shadow: 0 0 20px rgba(0,242,152,0.4); }
+    .status-occupied { color: var(--danger); text-shadow: 0 0 20px rgba(255,62,62,0.4); }
 
-    .location-name { font-size: 1.75rem; font-weight: 800; margin: 0.5rem 0; letter-spacing: -0.03em; }
-    .time-in-state { font-size: 0.9rem; color: var(--text-light); }
-
-    /* --- GRID DE 24 HORAS --- */
-    .grid-container {
-      background: var(--card);
-      border-radius: 24px;
-      padding: 1.5rem;
-      border: 1px solid var(--border);
-      margin-bottom: 1.5rem;
-    }
-
-    .grid-label {
-      font-size: 0.75rem;
-      font-weight: 700;
-      color: var(--text-light);
-      text-transform: uppercase;
-      margin-bottom: 1.25rem;
+    .location-label {
+      color: var(--text-dim);
+      font-size: 1rem;
+      font-weight: 500;
+      margin-top: 0.5rem;
       display: block;
     }
 
-    .hour-grid {
-      display: grid;
-      grid-template-columns: repeat(12, 1fr);
-      gap: 8px;
-    }
-
-    .hour-block {
-      height: 40px;
-      border-radius: 8px;
+    /* --- EL RELOJ --- */
+    .clock-container {
       position: relative;
-      background: var(--bg);
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-      overflow: hidden;
-      border: 1px solid var(--border);
-    }
-
-    .hour-fill {
       width: 100%;
-      transition: height 0.5s ease;
+      max-width: 350px;
+      margin-bottom: 2rem;
     }
 
-    .hour-fill.available { background: var(--primary); }
-    .hour-fill.occupied { background: var(--danger); }
-
-    .hour-number {
-      font-size: 0.65rem;
-      color: var(--text-light);
-      margin-top: 6px;
+    .current-time-display {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
       text-align: center;
-      font-weight: 600;
     }
 
-    /* --- EVENTOS RECIENTES --- */
-    .events-card {
+    .digital-clock {
+      font-size: 1.8rem;
+      font-weight: 700;
+      font-family: monospace;
+    }
+
+    /* --- EVENTOS --- */
+    .events-panel {
+      width: 100%;
+      max-width: 400px;
       background: var(--card);
-      border-radius: 24px;
+      border-radius: 20px;
       padding: 1.5rem;
-      border: 1px solid var(--border);
+      border: 1px solid #30363d;
     }
 
-    .event-row {
+    .event-item {
       display: flex;
+      justify-content: space-between;
       align-items: center;
-      padding: 1rem 0;
-      border-bottom: 1px solid var(--border);
+      padding: 0.8rem 0;
+      border-bottom: 1px solid #30363d;
     }
 
-    .event-row:last-child { border: none; }
+    .event-item:last-child { border: none; }
 
-    .event-icon {
-      width: 36px;
-      height: 36px;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-right: 1rem;
-      font-size: 1.2rem;
+    .event-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 12px;
+      display: inline-block;
     }
 
-    .event-info { flex-grow: 1; }
-    .event-title { font-size: 0.9rem; font-weight: 700; display: block; }
-    .event-time { font-size: 0.8rem; color: var(--text-light); }
-
+    .label-pro {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      font-weight: 800;
+      margin-bottom: 1rem;
+      display: block;
+    }
   </style>
 </head>
 <body>
 
-<div class="app-container">
-  <div class="header">
-    <div>
-      <span class="current-time" id="real-time">Cargando hora...</span>
-      <h1>Monitor Pro</h1>
-    </div>
-    <div style="text-align: right">
-      <span class="status-pill" style="margin:0; background: var(--border); color: var(--text)">Plaza del Pueblo, 1</span>
+  <div class="status-header">
+    <span class="location-label">PLAZA DEL PUEBLO, 1</span>
+    <h1 id="status-text" class="main-badge status-available">LIBRE</h1>
+    <span id="last-update" class="location-label" style="font-size: 0.8rem;">Actualizado hace 1 min</span>
+  </div>
+
+  <div class="clock-container">
+    <canvas id="radialClock"></canvas>
+    <div class="current-time-display">
+      <div class="digital-clock" id="clock-digital">00:00:00</div>
+      <div style="font-size: 0.7rem; color: var(--text-dim); font-weight: bold;">HISTORIAL 24H</div>
     </div>
   </div>
 
-  <div id="status-card" class="hero-card">
-    <div class="status-pill">Sincronizando...</div>
-    <div class="location-name">Plaza del Pueblo, 1</div>
-    <div class="time-in-state" id="duration">Calculando tiempo...</div>
-  </div>
-
-  <div class="grid-container">
-    <span class="grid-label">Disponibilidad (Últimas 24h)</span>
-    <div class="hour-grid" id="hour-grid">
+  <div class="events-panel">
+    <span class="label-pro">Movimientos Recientes</span>
+    <div id="event-log">
       </div>
   </div>
-
-  <div class="events-card">
-    <span class="grid-label">Últimos Movimientos</span>
-    <div id="event-list">
-      </div>
-  </div>
-</div>
 
 <script>
   const SB_URL = "https://mmxqckekhfaqrqgcabvh.supabase.co";
   const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1teHFja2VraGZhcXJxZ2NhYnZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwMjczNzEsImV4cCI6MjA4MTYwMzM3MX0.gl7HYm_o-XC7yKqguusx1lM6ULZ_htuuvrKyvoBLQXU";
   const sbClient = window.supabase.createClient(SB_URL, SB_KEY);
+  let radialChart;
 
-  function updateClock() {
+  function updateTime() {
     const now = new Date();
-    document.getElementById('real-time').textContent = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+    document.getElementById('clock-digital').textContent = now.toLocaleTimeString('es-ES', { hour12: false });
   }
-  setInterval(updateClock, 1000);
+  setInterval(updateTime, 1000);
 
-  async function loadData() {
+  async function refreshData() {
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { data, error } = await sbClient
       .from('lecturas')
@@ -220,86 +157,94 @@
       .order('creado_at', { ascending: true });
 
     if (data) {
-      renderStatus(data);
-      renderGrid(data);
-      renderEvents(data);
+      processAndRender(data);
     }
   }
 
-  function renderStatus(data) {
+  function processAndRender(data) {
     const last = data[data.length - 1];
-    const card = document.getElementById('status-card');
-    const isAvail = last.estado === 'available';
+    const statusEl = document.getElementById('status-text');
     
-    card.className = `hero-card ${isAvail ? 'available' : 'unavailable'}`;
-    card.querySelector('.status-pill').textContent = isAvail ? '● Disponible' : '● Ocupado';
-    
-    // Cálculo de tiempo en el estado
-    let lastChangeIdx = data.length - 1;
-    for (let i = data.length - 1; i >= 0; i--) {
-      if (data[i].estado !== last.estado) { lastChangeIdx = i + 1; break; }
-    }
-    const diff = Math.floor((Date.now() - new Date(data[lastChangeIdx].creado_at)) / 60000);
-    document.getElementById('duration').textContent = `En este estado desde hace ${diff} min`;
-  }
+    // 1. Estado Actual
+    const isFree = last.estado === 'available';
+    statusEl.textContent = isFree ? 'LIBRE' : 'OCUPADO';
+    statusEl.className = `main-badge ${isFree ? 'status-available' : 'status-occupied'}`;
 
-  function renderGrid(data) {
-    const grid = document.getElementById('hour-grid');
-    grid.innerHTML = '';
-    
-    // Agrupar por horas
-    const hourlyStats = Array(24).fill(0).map((_, i) => ({ hour: i, available: 0, total: 0 }));
-    
+    // 2. Lógica del Reloj (24 segmentos de 1 hora)
+    const hourlyData = Array(24).fill('available'); // Por defecto libre para evitar grises
     data.forEach(d => {
-      const h = new Date(d.creado_at).getHours();
-      hourlyStats[h].total++;
-      if (d.estado === 'available') hourlyStats[h].available++;
+      const hour = new Date(d.creado_at).getHours();
+      // Si en esa hora hubo ocupación significante, la marcamos
+      if (d.estado === 'occupied' || d.estado === 'unavailable') {
+        hourlyData[hour] = 'occupied';
+      }
     });
 
-    // Ordenar para que la última hora sea la actual
-    const currentHour = new Date().getHours();
-    for (let i = 0; i < 24; i++) {
-      const hIdx = (currentHour + 1 + i) % 24;
-      const stat = hourlyStats[hIdx];
-      const percentage = stat.total > 0 ? (stat.available / stat.total) * 100 : 0;
-      
-      const container = document.createElement('div');
-      container.innerHTML = `
-        <div class="hour-block">
-          <div class="hour-fill ${percentage > 50 ? 'available' : 'occupied'}" style="height: ${percentage || 10}%"></div>
-        </div>
-        <div class="hour-number">${hIdx}h</div>
-      `;
-      grid.appendChild(container);
-    }
+    renderRadial(hourlyData);
+    renderRecentEvents(data);
   }
 
-  function renderEvents(data) {
-    const list = document.getElementById('event-list');
-    const events = [];
-    for (let i = data.length - 1; i > 0; i--) {
-      if (data[i].estado !== data[i-1].estado) {
-        events.push(data[i]);
-      }
-      if (events.length === 3) break;
+  function renderRadial(hourlyData) {
+    const ctx = document.getElementById('radialClock').getContext('2d');
+    
+    // Reordenar datos para que el reloj empiece arriba (hora actual al final)
+    const currentHour = new Date().getHours();
+    const rotatedData = [];
+    const labels = [];
+    for (let i = 0; i < 24; i++) {
+      const h = (i + 1) % 24;
+      rotatedData.push(hourlyData[h] === 'available' ? 1 : 1);
+      labels.push(h + "h");
     }
 
-    list.innerHTML = events.map(e => `
-      <div class="event-row">
-        <div class="event-icon" style="background: ${e.estado === 'available' ? '#d1fae5' : '#fee2e2'}">
-          ${e.estado === 'available' ? '✅' : '🔌'}
-        </div>
-        <div class="event-info">
-          <span class="event-title">${e.estado === 'available' ? 'Cargador Libre' : 'Carga Iniciada'}</span>
-          <span class="event-time">${new Date(e.creado_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
-        </div>
+    const colors = rotatedData.map((_, i) => {
+      const h = (i + 1) % 24;
+      return hourlyData[h] === 'available' ? '#00f298' : '#ff3e3e';
+    });
+
+    if (radialChart) radialChart.destroy();
+
+    radialChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        datasets: [{
+          data: Array(24).fill(1),
+          backgroundColor: colors,
+          borderWidth: 2,
+          borderColor: '#0a0e14'
+        }]
+      },
+      options: {
+        cutout: '85%',
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        animation: { animateRotate: true }
+      }
+    });
+  }
+
+  function renderRecentEvents(data) {
+    const log = document.getElementById('event-log');
+    const movements = [];
+    for (let i = data.length - 1; i > 0; i--) {
+      if (data[i].estado !== data[i-1].estado) {
+        movements.push(data[i]);
+      }
+      if (movements.length === 3) break;
+    }
+
+    log.innerHTML = movements.map(m => `
+      <div class="event-item">
+        <span>
+          <span class="event-dot" style="background: ${m.estado === 'available' ? 'var(--primary)' : 'var(--danger)'}"></span>
+          <span style="font-weight: 600;">${m.estado === 'available' ? 'Se liberó' : 'Se ocupó'}</span>
+        </span>
+        <span style="color: var(--text-dim); font-size: 0.9rem;">${new Date(m.creado_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
       </div>
     `).join('');
   }
 
-  loadData();
-  setInterval(loadData, 30000);
+  refreshData();
+  setInterval(refreshData, 30000);
 </script>
-
 </body>
 </html>
