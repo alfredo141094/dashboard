@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Monitor Crítico | Plaza del Pueblo</title>
+  <title>Monitor Precisión | Plaza del Pueblo</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
   <style>
@@ -14,6 +14,7 @@
       --text-dim: #64748b;
       --green: #10b981;
       --red: #ef4444;
+      --now-line: #fbbf24; /* Amarillo */
       --border: #e2e8f0;
     }
 
@@ -29,7 +30,6 @@
 
     .container { width: 100%; max-width: 600px; }
 
-    /* Estado Hero */
     .status-card {
       background: var(--card);
       border-radius: 20px;
@@ -42,7 +42,7 @@
 
     .status-badge {
       display: inline-block;
-      padding: 0.5rem 1.5rem;
+      padding: 0.5rem 1.8rem;
       border-radius: 99px;
       font-weight: 800;
       font-size: 1.8rem;
@@ -51,17 +51,16 @@
     .is-free { background: #d1fae5; color: var(--green); }
     .is-busy { background: #fee2e2; color: var(--red); }
 
-    /* Línea de Tiempo con Marcadores Superior */
     .timeline-card {
       background: var(--card);
       border-radius: 16px;
-      padding: 2.5rem 1.5rem 1.5rem 1.5rem; /* Más espacio arriba para las horas */
+      padding: 2.5rem 1.5rem 1rem 1.5rem;
       border: 1px solid var(--border);
       margin-bottom: 1.5rem;
       position: relative;
     }
 
-    .timeline-wrapper { position: relative; width: 100%; height: 40px; margin-top: 15px; }
+    .timeline-wrapper { position: relative; width: 100%; height: 45px; }
 
     .timeline-container {
       height: 100%;
@@ -70,33 +69,50 @@
       display: flex;
       overflow: hidden;
       border: 1px solid var(--border);
+      position: relative;
     }
 
     .timeline-segment { height: 100%; }
     .seg-available { background: var(--green); }
     .seg-occupied { background: var(--red); }
 
-    /* Etiquetas de hora sobre la barra */
+    /* Marcadores fijos inferiores */
+    .fixed-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 10px;
+      padding: 0 2px;
+    }
+    .fixed-labels span {
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: var(--text-dim);
+      width: 20px;
+      text-align: center;
+    }
+
+    /* Línea Amarilla (Ahora) */
+    .now-indicator {
+      position: absolute;
+      top: -5px;
+      bottom: -5px;
+      width: 3px;
+      background: var(--now-line);
+      z-index: 10;
+      box-shadow: 0 0 8px rgba(251, 191, 36, 0.6);
+      pointer-events: none;
+    }
+
+    /* Horas de los cambios sobre la barra */
     .time-marker {
       position: absolute;
-      top: -22px;
+      top: -24px;
       transform: translateX(-50%);
       font-size: 0.65rem;
       font-weight: 800;
       color: var(--text-main);
-      white-space: nowrap;
-    }
-    .time-marker::after {
-      content: '';
-      position: absolute;
-      bottom: -18px;
-      left: 50%;
-      width: 1px;
-      height: 6px;
-      background: var(--text-dim);
     }
 
-    /* Lista de Actividad - Solo cambios */
     .activity-card {
       background: var(--card);
       border-radius: 16px;
@@ -116,7 +132,7 @@
     .event-row {
       display: flex;
       justify-content: space-between;
-      padding: 12px 0;
+      padding: 10px 0;
       border-bottom: 1px solid var(--border);
     }
     .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 8px; }
@@ -132,19 +148,25 @@
 
 <div class="container">
   <div class="status-card">
-    <div style="font-size: 0.75rem; color: var(--text-dim); font-weight: 800;">PLAZA DEL PUEBLO, 1</div>
+    <div style="font-size: 0.75rem; color: var(--text-dim); font-weight: 800; letter-spacing: 0.05em;">PLAZA DEL PUEBLO, 1</div>
     <div id="status-badge" class="status-badge">...</div>
-    <div id="since-time" style="font-size: 0.9rem; color: var(--text-dim);">Sincronizando...</div>
+    <div id="since-time" style="font-size: 0.95rem; font-weight: 600; color: var(--text-dim);">Sincronizando...</div>
   </div>
 
   <div class="timeline-card">
-    <span class="label-header">Historial de Cambios (Hoy)</span>
+    <span class="label-header">Historial 24h</span>
     <div class="timeline-wrapper">
-      <div id="marker-layer"></div> <div id="timeline" class="timeline-container"></div> </div>
+      <div id="marker-layer"></div>
+      <div id="timeline" class="timeline-container"></div>
+      <div id="now-line" class="now-indicator"></div>
+    </div>
+    <div class="fixed-labels">
+      <span>00</span><span>03</span><span>06</span><span>09</span><span>12</span><span>15</span><span>18</span><span>21</span><span>00</span>
+    </div>
   </div>
 
   <div class="activity-card">
-    <span class="label-header">Registro de Transiciones</span>
+    <span class="label-header">Últimos cambios de estado</span>
     <div id="activity-list"></div>
   </div>
 </div>
@@ -156,19 +178,18 @@
 
   async function updateMonitor() {
     const now = new Date();
-    const startOfDay = new Date(now);
-    startOfDay.setHours(0,0,0,0);
+    const startOfDay = new Date(now).setHours(0,0,0,0);
 
     const { data: logs } = await sbClient
       .from('lecturas')
       .select('*')
       .eq('cargador_id', 'pueblo')
-      .gte('creado_at', startOfDay.toISOString())
+      .gte('creado_at', new Date(startOfDay).toISOString())
       .order('creado_at', { ascending: true });
 
     if (!logs || logs.length === 0) return;
 
-    // 1. Filtrar SOLO cambios de estado (Transiciones)
+    // Obtener transiciones reales
     const transitions = [];
     for (let i = 0; i < logs.length; i++) {
       if (i === 0 || logs[i].estado !== logs[i-1].estado) {
@@ -176,20 +197,27 @@
       }
     }
 
-    // 2. Actualizar Estado Actual
-    const lastLog = logs[logs.length - 1];
+    // --- CORRECCIÓN "DESDE HACE": Usamos la última transición ---
+    const lastTransition = transitions[transitions.length - 1];
+    const diffMs = now - new Date(lastTransition.creado_at);
+    const diffTotalMins = Math.floor(diffMs / 60000);
+    
+    const h = Math.floor(diffTotalMins / 60);
+    const m = diffTotalMins % 60;
+    const timeText = h > 0 ? `${h}h ${m}min` : `${m} min`;
+
     const badge = document.getElementById('status-badge');
-    const isFree = lastLog.estado === 'available';
+    const isFree = lastTransition.estado === 'available';
     badge.textContent = isFree ? 'LIBRE' : 'OCUPADO';
     badge.className = `status-badge ${isFree ? 'is-free pulse' : 'is-busy'}`;
-    
-    const diffMins = Math.floor((now - new Date(lastLog.creado_at)) / 60000);
-    document.getElementById('since-time').textContent = `Desde hace ${diffMins} min`;
+    document.getElementById('since-time').textContent = `Desde hace ${timeText}`;
 
-    // 3. Renderizar Barra y Horas Superiores
+    // --- LÍNEA AMARILLA (AHORA) ---
+    const totalMinsToday = (now.getHours() * 60) + now.getMinutes();
+    const nowPosition = (totalMinsToday / 1440) * 100;
+    document.getElementById('now-line').style.left = `${nowPosition}%`;
+
     renderVisuals(logs, transitions, now);
-
-    // 4. Renderizar Lista (Solo las últimas 6 transiciones)
     renderActivityList(transitions);
   }
 
@@ -199,30 +227,30 @@
     timeline.innerHTML = '';
     markers.innerHTML = '';
 
-    // Crear segmentos de color
+    const startOfDay = new Date(now).setHours(0,0,0,0);
+
+    // Barra de color
     for (let i = 0; i < allLogs.length; i++) {
       const current = allLogs[i];
       const next = allLogs[i+1];
       const start = new Date(current.creado_at);
       const end = next ? new Date(next.creado_at) : now;
       
-      const width = ((end - start) / (now - new Date(now).setHours(0,0,0,0))) * 100;
+      const width = ((end - start) / (1440 * 60000)) * 100;
       const seg = document.createElement('div');
       seg.className = `timeline-segment ${current.estado === 'available' ? 'seg-available' : 'seg-occupied'}`;
       seg.style.width = `${width}%`;
       timeline.appendChild(seg);
     }
 
-    // Crear marcadores de hora (Basados en transiciones)
+    // Marcadores de hora de transiciones (superiores)
     transitions.forEach(t => {
       const time = new Date(t.creado_at);
-      const startOfDay = new Date(time).setHours(0,0,0,0);
-      const position = ((time - startOfDay) / (now - startOfDay)) * 100;
-
-      if (position > 0) { // No poner el de las 00:00 si queda muy pegado
+      const pos = (((time.getHours() * 60) + time.getMinutes()) / 1440) * 100;
+      if (pos > 2 && pos < 98) { // Evitar solapamientos en bordes
         const label = document.createElement('div');
         label.className = 'time-marker';
-        label.style.left = `${position}%`;
+        label.style.left = `${pos}%`;
         label.textContent = time.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
         markers.appendChild(label);
       }
@@ -231,20 +259,18 @@
 
   function renderActivityList(transitions) {
     const list = document.getElementById('activity-list');
-    // Invertimos para ver lo más reciente arriba y limitamos a los últimos cambios reales
-    const recentChanges = [...transitions].reverse().slice(0, 6);
-    
-    list.innerHTML = recentChanges.map(t => `
+    const recent = [...transitions].reverse().slice(0, 5);
+    list.innerHTML = recent.map(t => `
       <div class="event-row">
         <span style="font-weight:600; font-size:0.9rem">
           <span class="dot" style="background:${t.estado === 'available' ? 'var(--green)' : 'var(--red)'}"></span>
-          ${t.estado === 'available' ? 'Pasó a LIBRE' : 'Se OCUPÓ'}
+          ${t.estado === 'available' ? 'Liberado' : 'Ocupado'}
         </span>
         <span style="color:var(--text-dim); font-size:0.85rem; font-weight:700">
           ${new Date(t.creado_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
         </span>
       </div>
-    `).join('') || '<div style="text-align:center; color:var(--text-dim); padding:10px;">Sin cambios hoy</div>';
+    `).join('');
   }
 
   updateMonitor();
