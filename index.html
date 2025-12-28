@@ -14,7 +14,7 @@
       --text-dim: #64748b;
       --green: #10b981;
       --red: #ef4444;
-      --now-line: #fbbf24; /* Amarillo */
+      --now-line: #fbbf24;
       --border: #e2e8f0;
     }
 
@@ -54,13 +54,30 @@
     .timeline-card {
       background: var(--card);
       border-radius: 16px;
-      padding: 2.5rem 1.5rem 1rem 1.5rem;
+      padding: 1.5rem;
       border: 1px solid var(--border);
       margin-bottom: 1.5rem;
-      position: relative;
+    }
+
+    .label-header {
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 2.5rem; /* Espacio extra para las horas */
+      display: block;
     }
 
     .timeline-wrapper { position: relative; width: 100%; height: 45px; }
+
+    /* Contenedor específico para las horas de los eventos */
+    .marker-container {
+      position: absolute;
+      top: -28px;
+      left: 0;
+      right: 0;
+      height: 20px;
+    }
 
     .timeline-container {
       height: 100%;
@@ -76,7 +93,6 @@
     .seg-available { background: var(--green); }
     .seg-occupied { background: var(--red); }
 
-    /* Marcadores fijos inferiores */
     .fixed-labels {
       display: flex;
       justify-content: space-between;
@@ -87,11 +103,10 @@
       font-size: 0.65rem;
       font-weight: 700;
       color: var(--text-dim);
-      width: 20px;
+      width: 25px;
       text-align: center;
     }
 
-    /* Línea Amarilla (Ahora) */
     .now-indicator {
       position: absolute;
       top: -5px;
@@ -103,14 +118,16 @@
       pointer-events: none;
     }
 
-    /* Horas de los cambios sobre la barra */
     .time-marker {
       position: absolute;
-      top: -24px;
       transform: translateX(-50%);
       font-size: 0.65rem;
       font-weight: 800;
       color: var(--text-main);
+      white-space: nowrap;
+      background: var(--card);
+      padding: 0 2px;
+      z-index: 5;
     }
 
     .activity-card {
@@ -118,15 +135,6 @@
       border-radius: 16px;
       padding: 1.5rem;
       border: 1px solid var(--border);
-    }
-
-    .label-header {
-      font-size: 0.7rem;
-      color: var(--text-dim);
-      text-transform: uppercase;
-      font-weight: 700;
-      margin-bottom: 1rem;
-      display: block;
     }
 
     .event-row {
@@ -148,7 +156,7 @@
 
 <div class="container">
   <div class="status-card">
-    <div style="font-size: 0.75rem; color: var(--text-dim); font-weight: 800; letter-spacing: 0.05em;">PLAZA DEL PUEBLO, 1</div>
+    <div style="font-size: 0.75rem; color: var(--text-dim); font-weight: 800;">PLAZA DEL PUEBLO, 1</div>
     <div id="status-badge" class="status-badge">...</div>
     <div id="since-time" style="font-size: 0.95rem; font-weight: 600; color: var(--text-dim);">Sincronizando...</div>
   </div>
@@ -156,7 +164,7 @@
   <div class="timeline-card">
     <span class="label-header">Historial 24h</span>
     <div class="timeline-wrapper">
-      <div id="marker-layer"></div>
+      <div id="marker-layer" class="marker-container"></div>
       <div id="timeline" class="timeline-container"></div>
       <div id="now-line" class="now-indicator"></div>
     </div>
@@ -166,7 +174,7 @@
   </div>
 
   <div class="activity-card">
-    <span class="label-header">Últimos cambios de estado</span>
+    <span class="label-header">Registro de cambios</span>
     <div id="activity-list"></div>
   </div>
 </div>
@@ -189,7 +197,6 @@
 
     if (!logs || logs.length === 0) return;
 
-    // Obtener transiciones reales
     const transitions = [];
     for (let i = 0; i < logs.length; i++) {
       if (i === 0 || logs[i].estado !== logs[i-1].estado) {
@@ -197,22 +204,18 @@
       }
     }
 
-    // --- CORRECCIÓN "DESDE HACE": Usamos la última transición ---
     const lastTransition = transitions[transitions.length - 1];
     const diffMs = now - new Date(lastTransition.creado_at);
     const diffTotalMins = Math.floor(diffMs / 60000);
-    
     const h = Math.floor(diffTotalMins / 60);
     const m = diffTotalMins % 60;
-    const timeText = h > 0 ? `${h}h ${m}min` : `${m} min`;
 
     const badge = document.getElementById('status-badge');
     const isFree = lastTransition.estado === 'available';
     badge.textContent = isFree ? 'LIBRE' : 'OCUPADO';
     badge.className = `status-badge ${isFree ? 'is-free pulse' : 'is-busy'}`;
-    document.getElementById('since-time').textContent = `Desde hace ${timeText}`;
+    document.getElementById('since-time').textContent = `Desde hace ${h > 0 ? h + 'h ' : ''}${m} min`;
 
-    // --- LÍNEA AMARILLA (AHORA) ---
     const totalMinsToday = (now.getHours() * 60) + now.getMinutes();
     const nowPosition = (totalMinsToday / 1440) * 100;
     document.getElementById('now-line').style.left = `${nowPosition}%`;
@@ -227,33 +230,43 @@
     timeline.innerHTML = '';
     markers.innerHTML = '';
 
-    const startOfDay = new Date(now).setHours(0,0,0,0);
-
-    // Barra de color
+    // Dibujar segmentos de color
     for (let i = 0; i < allLogs.length; i++) {
       const current = allLogs[i];
       const next = allLogs[i+1];
       const start = new Date(current.creado_at);
       const end = next ? new Date(next.creado_at) : now;
-      
       const width = ((end - start) / (1440 * 60000)) * 100;
+      
       const seg = document.createElement('div');
       seg.className = `timeline-segment ${current.estado === 'available' ? 'seg-available' : 'seg-occupied'}`;
       seg.style.width = `${width}%`;
       timeline.appendChild(seg);
     }
 
-    // Marcadores de hora de transiciones (superiores)
-    transitions.forEach(t => {
+    // Lógica Anti-colisión para etiquetas de hora
+    let lastPlacedPos = -10; // Posición de la última etiqueta colocada
+
+    transitions.forEach((t, index) => {
       const time = new Date(t.creado_at);
-      const pos = (((time.getHours() * 60) + time.getMinutes()) / 1440) * 100;
-      if (pos > 2 && pos < 98) { // Evitar solapamientos en bordes
-        const label = document.createElement('div');
-        label.className = 'time-marker';
-        label.style.left = `${pos}%`;
-        label.textContent = time.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        markers.appendChild(label);
-      }
+      let pos = (((time.getHours() * 60) + time.getMinutes()) / 1440) * 100;
+
+      // Si hay menos de un 7% de distancia con la anterior, la saltamos para evitar solape
+      // EXCEPTO si es la última transición, que es prioritaria.
+      if (pos < lastPlacedPos + 7 && index !== transitions.length - 1) return;
+
+      const label = document.createElement('div');
+      label.className = 'time-marker';
+      
+      // Ajuste para que no se salga por la izquierda o derecha
+      if (pos < 5) pos = 5;
+      if (pos > 95) pos = 95;
+
+      label.style.left = `${pos}%`;
+      label.textContent = time.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+      markers.appendChild(label);
+      
+      lastPlacedPos = pos;
     });
   }
 
