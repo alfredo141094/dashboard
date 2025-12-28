@@ -2,279 +2,304 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Monitor Qwello | Dual Chrono Fix</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Control de Cargador | Plaza del Pueblo</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #05070a;
-      --card: #0d1117;
-      --green: #00f298;
-      --red: #ff3e3e;
-      --empty: #1a1f26;
-      --text: #ffffff;
-      --dim: #8b949e;
-      --border: #30363d;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text-main: #0f172a;
+      --text-dim: #64748b;
+      --green: #10b981;
+      --red: #ef4444;
+      --blue: #3b82f6;
+      --border: #e2e8f0;
     }
 
     body {
-      font-family: 'Inter', system-ui, sans-serif;
+      font-family: 'Inter', sans-serif;
       background: var(--bg);
-      color: var(--text);
+      color: var(--text-main);
       margin: 0;
-      padding: 2rem 1rem;
+      padding: 1rem;
       display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
-    .header { text-align: center; margin-bottom: 3rem; }
-    .status-hero { font-size: 3.5rem; font-weight: 900; margin: 0; letter-spacing: -2px; }
-    .is-free { color: var(--green); text-shadow: 0 0 25px rgba(0,242,152,0.4); }
-    .is-busy { color: var(--red); text-shadow: 0 0 25px rgba(255,62,62,0.4); }
-
-    .clocks-container {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 3rem;
       justify-content: center;
+    }
+
+    .container {
       width: 100%;
-      max-width: 1100px;
+      max-width: 600px;
     }
 
-    .clock-column {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      width: 340px;
-      gap: 1.5rem;
-    }
-
-    .clock-label {
-      font-size: 0.8rem;
-      font-weight: 800;
-      color: var(--dim);
-      letter-spacing: 2px;
-      text-transform: uppercase;
-    }
-
-    .clock-frame {
-      position: relative;
-      width: 320px;
-      height: 320px;
+    /* Header y Estado Actual */
+    .status-card {
       background: var(--card);
-      border-radius: 50%;
-      padding: 10px;
+      border-radius: 20px;
+      padding: 2rem;
+      text-align: center;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+      border: 1px solid var(--border);
+      margin-bottom: 1.5rem;
+    }
+
+    .location {
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      font-weight: 800;
+      margin-bottom: 0.5rem;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 0.5rem 1.5rem;
+      border-radius: 99px;
+      font-weight: 800;
+      font-size: 1.5rem;
+      margin: 1rem 0;
+    }
+
+    .is-free { background: #d1fae5; color: var(--green); }
+    .is-busy { background: #fee2e2; color: var(--red); }
+
+    .time-in-state {
+      font-size: 0.9rem;
+      color: var(--text-dim);
+    }
+
+    /* Estadísticas rápidas */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .stat-box {
+      background: var(--card);
+      padding: 1rem;
+      border-radius: 12px;
       border: 1px solid var(--border);
     }
 
-    .center-info {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      text-align: center;
-    }
+    .stat-label { font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; font-weight: 700; }
+    .stat-value { font-size: 1.1rem; font-weight: 700; margin-top: 4px; }
 
-    .digital-now { font-size: 1.8rem; font-weight: 800; font-family: monospace; }
-
-    .hour-marker { position: absolute; font-weight: 900; color: #444c56; font-size: 0.85rem; z-index: 5; }
-    .m12 { top: 15px; left: 50%; transform: translateX(-50%); }
-    .m3  { right: 15px; top: 50%; transform: translateY(-50%); }
-    .m6  { bottom: 15px; left: 50%; transform: translateX(-50%); }
-    .m9  { left: 15px; top: 50%; transform: translateY(-50%); }
-
-    .events-panel {
-      width: 100%;
+    /* Línea de Tiempo Lineal */
+    .timeline-card {
       background: var(--card);
       border-radius: 16px;
-      padding: 1.25rem;
+      padding: 1.5rem;
+      border: 1px solid var(--border);
+      margin-bottom: 1.5rem;
+    }
+
+    .timeline-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .timeline-container {
+      height: 40px;
+      background: #f1f5f9;
+      border-radius: 8px;
+      display: flex;
+      overflow: hidden;
+      position: relative;
       border: 1px solid var(--border);
     }
 
-    .events-title {
-      font-size: 0.7rem;
-      font-weight: 800;
-      color: var(--dim);
-      text-transform: uppercase;
-      margin-bottom: 1rem;
-      display: block;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 8px;
+    .timeline-segment { height: 100%; position: relative; }
+    .seg-available { background: var(--green); }
+    .seg-occupied { background: var(--red); }
+    
+    .timeline-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 8px;
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      font-weight: 600;
+    }
+
+    /* Lista de Actividad */
+    .activity-card {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 1.5rem;
+      border: 1px solid var(--border);
     }
 
     .event-row {
       display: flex;
       justify-content: space-between;
-      padding: 10px 0;
+      padding: 12px 0;
       border-bottom: 1px solid var(--border);
-      font-size: 0.85rem;
     }
+
     .event-row:last-child { border: none; }
-    .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 10px; }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 8px;
+    }
+
+    .pulse {
+      animation: pulse-animation 2s infinite;
+    }
+
+    @keyframes pulse-animation {
+      0% { box-shadow: 0 0 0 0px rgba(16, 185, 129, 0.4); }
+      100% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+    }
   </style>
 </head>
 <body>
 
-  <div class="header">
-    <span style="color:var(--dim); font-weight:800; letter-spacing:1px">PLAZA DEL PUEBLO, 1</span>
-    <h1 id="status-val" class="status-hero">SIN DATOS</h1>
+<div class="container">
+  <div class="status-card">
+    <div class="location">Plaza del Pueblo, 1</div>
+    <div id="status-badge" class="status-badge">CARGANDO...</div>
+    <div id="since-time" class="time-in-state">Sincronizando datos...</div>
   </div>
 
-  <div class="clocks-container">
-    <div class="clock-column">
-      <div class="clock-label">Mañana (00:00 - 12:00)</div>
-      <div class="clock-frame">
-        <span class="hour-marker m12">12</span>
-        <span class="hour-marker m3">3</span>
-        <span class="hour-marker m6">6</span>
-        <span class="hour-marker m9">9</span>
-        <canvas id="chartAM"></canvas>
-        <div class="center-info">
-          <div class="digital-now" id="timeAM">--:--</div>
-          <div style="font-size:0.6rem; color:var(--dim); font-weight:bold">AM</div>
-        </div>
-      </div>
-      <div class="events-panel">
-        <span class="events-title">Actividad Mañana</span>
-        <div id="listAM"></div>
-      </div>
+  <div class="stats-grid">
+    <div class="stat-box">
+      <div class="stat-label">Ocupado Hoy</div>
+      <div id="total-busy" class="stat-value">--h --m</div>
     </div>
-
-    <div class="clock-column">
-      <div class="clock-label">Tarde/Noche (12:00 - 00:00)</div>
-      <div class="clock-frame">
-        <span class="hour-marker m12">12</span>
-        <span class="hour-marker m3">3</span>
-        <span class="hour-marker m6">6</span>
-        <span class="hour-marker m9">9</span>
-        <canvas id="chartPM"></canvas>
-        <div class="center-info">
-          <div class="digital-now" id="timePM">--:--</div>
-          <div style="font-size:0.6rem; color:var(--dim); font-weight:bold">PM</div>
-        </div>
-      </div>
-      <div class="events-panel">
-        <span class="events-title">Actividad Tarde</span>
-        <div id="listPM"></div>
-      </div>
+    <div class="stat-box">
+      <div class="stat-label">Eficiencia Uso</div>
+      <div id="use-percent" class="stat-value">--%</div>
     </div>
   </div>
+
+  <div class="timeline-card">
+    <div class="timeline-header">
+      <span class="stat-label">Historial 24h (Hoy)</span>
+      <span id="last-update" style="font-size: 0.6rem; color: var(--text-dim)"></span>
+    </div>
+    <div id="timeline" class="timeline-container">
+      </div>
+    <div class="timeline-labels">
+      <span>00:00</span>
+      <span>06:00</span>
+      <span>12:00</span>
+      <span>18:00</span>
+      <span>Ahora</span>
+    </div>
+  </div>
+
+  <div class="activity-card">
+    <div class="stat-label" style="margin-bottom: 1rem;">Últimos cambios</div>
+    <div id="activity-list"></div>
+  </div>
+</div>
 
 <script>
   const SB_URL = "https://mmxqckekhfaqrqgcabvh.supabase.co";
   const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1teHFja2VraGZhcXJxZ2NhYnZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwMjczNzEsImV4cCI6MjA4MTYwMzM3MX0.gl7HYm_o-XC7yKqguusx1lM6ULZ_htuuvrKyvoBLQXU";
   const sbClient = window.supabase.createClient(SB_URL, SB_KEY);
-  
-  let myChartAM, myChartPM;
 
-  async function sync() {
+  async function updateMonitor() {
     const now = new Date();
-    // Obtenemos solo los datos de HOY (desde las 00:00)
-    const todayStart = new Date(now);
-    todayStart.setHours(0,0,0,0);
+    const startOfDay = new Date(now);
+    startOfDay.setHours(0,0,0,0);
 
-    const { data } = await sbClient
+    const { data: logs, error } = await sbClient
       .from('lecturas')
       .select('*')
       .eq('cargador_id', 'pueblo')
-      .gte('creado_at', todayStart.toISOString())
+      .gte('creado_at', startOfDay.toISOString())
       .order('creado_at', { ascending: true });
 
-    if (data && data.length > 0) {
-      renderStatus(data[data.length - 1]);
-      const timeline = buildPrecisionTimeline(data, now);
-      
-      renderClock(timeline.slice(0, 720), 'chartAM', 'myChartAM');
-      renderClock(timeline.slice(720, 1440), 'chartPM', 'myChartPM');
-      
-      renderEvents(data.filter(d => new Date(d.creado_at).getHours() < 12), 'listAM');
-      renderEvents(data.filter(d => new Date(d.creado_at).getHours() >= 12), 'listPM');
+    if (error || !logs || logs.length === 0) return;
 
-      const timeStr = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-      document.getElementById('timeAM').textContent = now.getHours() < 12 ? timeStr : "12:00";
-      document.getElementById('timePM').textContent = now.getHours() >= 12 ? timeStr : "--:--";
-    }
-  }
-
-  function buildPrecisionTimeline(logs, now) {
-    const timeline = Array(1440).fill('var(--empty)');
-    const currentTotalMinutes = (now.getHours() * 60) + now.getMinutes();
+    const lastLog = logs[logs.length - 1];
     
-    // Referencia de inicio del día en milisegundos
-    const startMs = new Date(now).setHours(0,0,0,0);
+    // 1. Actualizar Estado Principal
+    const badge = document.getElementById('status-badge');
+    const isFree = lastLog.estado === 'available';
+    badge.textContent = isFree ? 'LIBRE' : 'OCUPADO';
+    badge.className = `status-badge ${isFree ? 'is-free pulse' : 'is-busy'}`;
+
+    // 2. Tiempo en estado actual
+    const lastChange = new Date(lastLog.creado_at);
+    const diffMs = now - lastChange;
+    const diffMins = Math.floor(diffMs / 60000);
+    document.getElementById('since-time').textContent = `Desde hace ${diffMins} min`;
+
+    // 3. Construir Línea de Tiempo Lineal
+    renderTimeline(logs, now);
+
+    // 4. Lista de actividad (últimos 5)
+    renderActivity(logs);
+
+    document.getElementById('last-update').textContent = `ACTUALIZADO: ${now.toLocaleTimeString()}`;
+  }
+
+  function renderTimeline(logs, now) {
+    const container = document.getElementById('timeline');
+    container.innerHTML = '';
     
-    let lastState = logs[0].estado;
-    let logIdx = 0;
+    const startOfDay = new Date(now).setHours(0,0,0,0);
+    const totalMinutesToday = (now.getHours() * 60) + now.getMinutes();
+    
+    let busyMinutes = 0;
 
-    for (let i = 0; i < 1440; i++) {
-      if (i <= currentTotalMinutes) {
-        const minuteMs = startMs + (i * 60000);
-        
-        // Sincronizar con el último log disponible antes de este minuto
-        while(logIdx < logs.length && new Date(logs[logIdx].creado_at).getTime() <= minuteMs) {
-          lastState = logs[logIdx].estado;
-          logIdx++;
-        }
-        timeline[i] = lastState === 'available' ? '#00f298' : '#ff3e3e';
-      }
+    for (let i = 0; i < logs.length; i++) {
+      const current = logs[i];
+      const next = logs[i+1];
+      
+      const startTime = new Date(current.creado_at);
+      const endTime = next ? new Date(next.creado_at) : now;
+      
+      const durationMins = (endTime - startTime) / 60000;
+      const widthPercent = (durationMins / 1440) * 100;
+
+      if (current.estado !== 'available') busyMinutes += durationMins;
+
+      const segment = document.createElement('div');
+      segment.className = `timeline-segment ${current.estado === 'available' ? 'seg-available' : 'seg-occupied'}`;
+      segment.style.width = `${widthPercent}%`;
+      container.appendChild(segment);
     }
-    return timeline;
+
+    // Estadísticas
+    const hours = Math.floor(busyMinutes / 60);
+    const mins = Math.floor(busyMinutes % 60);
+    document.getElementById('total-busy').textContent = `${hours}h ${mins}m`;
+    document.getElementById('use-percent').textContent = `${Math.round((busyMinutes / totalMinutesToday) * 100)}%`;
   }
 
-  function renderClock(minuteColors, canvasId, chartVar) {
-    const ctx = document.getElementById(canvasId).getContext('2d');
-    if (canvasId === 'chartAM' && myChartAM) myChartAM.destroy();
-    if (canvasId === 'chartPM' && myChartPM) myChartPM.destroy();
-
-    const chart = new Chart(ctx, {
-      type: 'doughnut',
-      data: {
-        datasets: [{
-          data: Array(720).fill(1),
-          backgroundColor: minuteColors,
-          borderWidth: 0,
-          borderColor: (context) => (context.dataIndex % 60 === 0 ? '#05070a' : 'transparent'),
-          hoverOffset: 0
-        }]
-      },
-      options: {
-        rotation: -90,
-        cutout: '84%',
-        animation: false,
-        plugins: { legend: { display: false }, tooltip: { enabled: false } }
-      }
-    });
-
-    if (canvasId === 'chartAM') myChartAM = chart;
-    else myChartPM = chart;
-  }
-
-  function renderEvents(subset, listId) {
-    const list = document.getElementById(listId);
-    const moves = [];
-    for (let i = subset.length - 1; i > 0; i--) {
-      if (subset[i].estado !== subset[i - 1].estado) moves.push(subset[i]);
-      if (moves.length === 4) break;
-    }
-    list.innerHTML = moves.map(m => `
+  function renderActivity(logs) {
+    const list = document.getElementById('activity-list');
+    const lastFive = [...logs].reverse().slice(0, 5);
+    
+    list.innerHTML = lastFive.map(log => `
       <div class="event-row">
-        <span><span class="dot" style="background:${m.estado==='available'?'var(--green)':'var(--red)'}"></span>${m.estado==='available' ? 'Liberado' : 'Ocupado'}</span>
-        <span style="color:var(--dim); font-weight:700">${new Date(m.creado_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+        <span>
+          <span class="dot" style="background:${log.estado === 'available' ? 'var(--green)' : 'var(--red)'}"></span>
+          ${log.estado === 'available' ? 'Se liberó' : 'Se ocupó'}
+        </span>
+        <span style="font-weight:600; font-size:0.85rem">
+          ${new Date(log.creado_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+        </span>
       </div>
-    `).join('') || '<div style="color:var(--dim); font-size:0.75rem; text-align:center">Sin actividad en este tramo</div>';
+    `).join('');
   }
 
-  function renderStatus(last) {
-    const el = document.getElementById('status-val');
-    const free = last.estado === 'available';
-    el.textContent = free ? 'LIBRE' : 'OCUPADO';
-    el.className = `status-hero ${free ? 'is-free' : 'is-busy'}`;
-  }
-
-  sync();
-  setInterval(sync, 30000);
+  updateMonitor();
+  setInterval(updateMonitor, 30000);
 </script>
+
 </body>
 </html>
